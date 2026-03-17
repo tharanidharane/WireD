@@ -10,6 +10,7 @@ import AudioCall from "../components/call/AudioCall";
 import IncomingCallModal from "../components/call/IncomingCallModal";
 import VideoCall from "../components/call/VideoCall";
 import HomePanel from "../components/dashboard/HomePanel";
+import GroupsPanel from "../components/dashboard/GroupsPanel";
 import ProfilePanel from "../components/dashboard/ProfilePanel";
 import SettingsPanel from "../components/dashboard/SettingsPanel";
 import { authApi, friendApi, getErrorMessage, groupApi, messageApi } from "../services/api";
@@ -31,7 +32,7 @@ const rtcConfig = {
   ]
 };
 
-const messageSections = new Set(["message", "archive", "calls"]);
+const messageSections = new Set(["message", "archive", "calls", "groups"]);
 
 const mapGroupConversation = (group) => ({
   ...group,
@@ -46,6 +47,14 @@ const mapGroupConversation = (group) => ({
 
 const getConversationId = (conversation) => conversation?.user?._id || "";
 const getConversationKey = (conversation) => `${conversation?.type || "direct"}:${getConversationId(conversation)}`;
+const DEFAULT_PREFERENCES = {
+  notifications: true,
+  sounds: true,
+  desktopNotifications: true,
+  emailNotifications: false,
+  pushNotifications: true,
+  messagePreview: true
+};
 
 const getConversationMemberIds = (conversation, currentUserId) => {
   if (!conversation) return [];
@@ -110,11 +119,20 @@ function Chat() {
   const [callStatus, setCallStatus] = useState("");
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
-  const [preferences, setPreferences] = useState({
-    notifications: true,
-    typingIndicators: true,
-    sounds: true
+  const [preferences, setPreferences] = useState(() => {
+    try {
+      const storedPreferences = JSON.parse(localStorage.getItem("wired_preferences") || "{}");
+      return {
+        ...DEFAULT_PREFERENCES,
+        ...storedPreferences
+      };
+    } catch {
+      return DEFAULT_PREFERENCES;
+    }
   });
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [profileSaveMessage, setProfileSaveMessage] = useState("");
+  const [profileSaveError, setProfileSaveError] = useState("");
   const [profileUploadMessage, setProfileUploadMessage] = useState("");
   const [profileUploadError, setProfileUploadError] = useState("");
   const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
@@ -496,6 +514,10 @@ function Chat() {
   }, [archivedChatIds]);
 
   useEffect(() => {
+    localStorage.setItem("wired_preferences", JSON.stringify(preferences));
+  }, [preferences]);
+
+  useEffect(() => {
     if (!activeCall) return;
     assignLocalPreview();
   }, [activeCall]);
@@ -861,11 +883,25 @@ function Chat() {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
   };
 
-  const handleTogglePreference = (key) => {
-    setPreferences((current) => ({
-      ...current,
-      [key]: !current[key]
-    }));
+  const handleSavePreferences = (nextPreferences) => {
+    setPreferences(nextPreferences);
+    setSettingsMessage("Preferences saved.");
+  };
+
+  const handleSaveProfile = async ({ name, bio }) => {
+    setProfileSaveMessage("");
+    setProfileSaveError("");
+
+    try {
+      const { data } = await authApi.updateProfile({ name, bio });
+      setCurrentUser(data.user);
+      localStorage.setItem("wired_user", JSON.stringify(data.user));
+      setProfileSaveMessage(data.message || "Profile updated");
+      return true;
+    } catch (error) {
+      setProfileSaveError(getErrorMessage(error, "Could not update profile"));
+      return false;
+    }
   };
 
   const handleProfilePictureChange = async (event) => {
@@ -876,6 +912,8 @@ function Chat() {
 
     setProfileUploadMessage("");
     setProfileUploadError("");
+    setProfileSaveMessage("");
+    setProfileSaveError("");
     setIsUploadingProfilePicture(true);
 
     try {
@@ -1219,6 +1257,16 @@ function Chat() {
     }
   };
 
+  const handlePrimarySidebarAction = () => {
+    if (activeSection === "calls") {
+      setActiveSection("message");
+      return;
+    }
+
+    setActiveSection("message");
+    searchFocusRef.current?.();
+  };
+
   const isOnline = activeConversation?.type === "direct"
     ? onlineUsers.includes(activeConversation.user._id)
     : Boolean(activeConversation?.members?.some((member) => member._id !== currentUser._id && onlineUsers.includes(member._id)));
@@ -1239,13 +1287,16 @@ function Chat() {
       return (
         <div className="workspace-single-view">
           <HomePanel
-            user={currentUser}
-            friends={friends.filter((friend) => onlineUsers.includes(friend.user._id))}
-            requests={requests}
-            onlineUsers={onlineUsers}
             callHistory={callHistory}
-            onOpenMessages={() => setActiveSection("message")}
           />
+        </div>
+      );
+    }
+
+    if (activeSection === "groups") {
+      return (
+        <div className="workspace-single-view">
+          <GroupsPanel groups={groups} currentUserId={currentUser._id} archivedChatIds={archivedChatIds} />
         </div>
       );
     }
@@ -1272,10 +1323,13 @@ function Chat() {
             user={currentUser}
             friendsCount={friends.length + groups.length}
             onlineUsersCount={onlineUsers.length}
+            saveMessage={profileSaveMessage}
+            saveError={profileSaveError}
             uploadMessage={profileUploadMessage}
             uploadError={profileUploadError}
             isUploading={isUploadingProfilePicture}
             onProfilePictureChange={handleProfilePictureChange}
+            onSaveProfile={handleSaveProfile}
           />
         </div>
       );
@@ -1288,7 +1342,8 @@ function Chat() {
             theme={theme}
             onToggleTheme={handleToggleTheme}
             preferences={preferences}
-            onTogglePreference={handleTogglePreference}
+            onSavePreferences={handleSavePreferences}
+            settingsMessage={settingsMessage}
           />
         </div>
       );
@@ -1330,7 +1385,6 @@ function Chat() {
               isOnline={isOnline}
               onlineCount={onlineCount}
               memberCount={memberCount}
-              messageCount={messages.length}
               isMutedChat={isMutedChat}
               isArchived={isArchived}
               conversationType={activeConversation?.type || "direct"}
@@ -1377,6 +1431,8 @@ function Chat() {
           onChangeSection={handleChangeSection}
           requestsCount={requests.length}
           onLogout={handleLogout}
+          currentUser={currentUser}
+          onPrimaryAction={handlePrimarySidebarAction}
         />
 
         {renderWorkspace()}

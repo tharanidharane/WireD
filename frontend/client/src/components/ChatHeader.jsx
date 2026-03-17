@@ -8,7 +8,6 @@ function ChatHeader({
   isOnline,
   onlineCount,
   memberCount,
-  messageCount,
   isMutedChat,
   isArchived,
   conversationType = "direct",
@@ -45,8 +44,8 @@ function ChatHeader({
 
   const subtitle = typingUser ||
     (conversationType === "group"
-      ? `${memberCount || 0} members, ${onlineCount || 0} online`
-      : `2 members, ${isOnline ? "1 online" : "offline"}`);
+      ? `${memberCount || 0} members • ${onlineCount || 0} online`
+      : isOnline ? "Online" : "Offline");
 
   return (
     <header className="chat-room-header">
@@ -59,7 +58,6 @@ function ChatHeader({
       </div>
 
       <div className="chat-room-meta">
-        <div className="chat-room-count">{messageCount} messages</div>
         <button
           type="button"
           className="panel-icon"
@@ -91,6 +89,9 @@ function ChatHeader({
 
           {menuOpen && (
             <div className="chat-header-dropdown">
+              <button type="button" onClick={() => handleAction(onViewProfile)}>
+                View profile
+              </button>
               <button type="button" onClick={() => handleAction(onClearChat)}>
                 Clear chat
               </button>
@@ -108,11 +109,6 @@ function ChatHeader({
               {conversationType === "direct" && (
                 <button type="button" onClick={() => handleAction(onBlockUser)}>
                   Block user
-                </button>
-              )}
-              {conversationType === "direct" && (
-                <button type="button" onClick={() => handleAction(onViewProfile)}>
-                  View profile
                 </button>
               )}
             </div>

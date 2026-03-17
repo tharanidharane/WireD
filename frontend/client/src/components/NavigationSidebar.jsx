@@ -3,58 +3,93 @@ import {
   MessageCircle,
   Phone,
   Settings,
-  FolderClosed,
+  Users,
   LogOut,
-  Newspaper
+  Plus,
+  Moon,
+  Bell,
+  Rocket
 } from "lucide-react";
 
 const navItems = [
   { key: "message", label: "Chats", icon: MessageCircle },
+  { key: "groups", label: "Groups", icon: Users },
   { key: "calls", label: "Calls", icon: Phone },
-  { key: "archive", label: "Archive", icon: FolderClosed },
-  { key: "settings", label: "Settings", icon: Settings },
-  { key: "profile", label: "Profile", icon: CircleUserRound }
+  { key: "profile", label: "Profile", icon: CircleUserRound },
+  { key: "settings", label: "Settings", icon: Settings }
 ];
 
-function NavigationSidebar({ activeSection, onChangeSection, requestsCount, onLogout }) {
+function NavigationSidebar({ activeSection, onChangeSection, requestsCount, onLogout, currentUser, onPrimaryAction }) {
   return (
     <aside className="nav-sidebar">
-      <div className="nav-logo" aria-label="Wired">
-        <span className="nav-logo-mark" />
+      <div className="nav-topbar nav-topbar-logo-only">
+        <div className="nav-logo" aria-label="Wired">
+          <Rocket size={16} />
+        </div>
+      </div>
+
+      <div className="nav-account-block">
+        <div className="nav-account-avatar">{(currentUser?.name || "U").slice(0, 1).toUpperCase()}</div>
+        <div className="nav-account-copy">
+          <strong>{currentUser?.name || "User"}</strong>
+          <span>{activeSection === "message" ? "Active now" : "Workspace Admin"}</span>
+        </div>
       </div>
 
       <div className="nav-actions">
-        {navItems.map(({ key, label, icon: Icon }, index) => (
+        {navItems.map(({ key, label, icon: Icon }) => (
           <button
             key={label}
             type="button"
             className={`nav-icon-button ${activeSection === key ? "active" : ""}`}
             onClick={() => onChangeSection(key)}
-            aria-label={label}
-            title={label}
           >
             <Icon size={20} />
-            {index < 2 && requestsCount > 0 ? (
+            {key === "groups" && requestsCount > 0 ? (
               <span className="nav-badge">{requestsCount}</span>
             ) : null}
-            <span className="nav-icon-label">{label}</span>
+            <span>{label}</span>
           </button>
         ))}
       </div>
 
+      {activeSection === "calls" ? (
+        <button type="button" className="nav-primary-button" onClick={onPrimaryAction}>
+          <Phone size={14} />
+          New Call
+        </button>
+      ) : (
+        <button type="button" className="nav-primary-button" onClick={onPrimaryAction}>
+          <Plus size={14} />
+          New Chat
+        </button>
+      )}
+
+      <div className="nav-bottom-user">
+        <div className="nav-bottom-avatar">{(currentUser?.name || "U").slice(0, 1).toUpperCase()}</div>
+        <div>
+          <strong>{currentUser?.name || "User"}</strong>
+          <p>{currentUser?.email || "user@example.com"}</p>
+        </div>
+      </div>
+
+      <div className="nav-header-icons">
+        <button type="button" className="nav-top-icon" aria-label="Notifications">
+          <Bell size={14} />
+        </button>
+        <button type="button" className="nav-top-icon" aria-label="Theme">
+          <Moon size={14} />
+        </button>
+      </div>
+
       <button
         type="button"
-        className="nav-icon-button nav-logout"
+        className="nav-logout"
         onClick={onLogout}
-        aria-label="Logout"
-        title="Logout"
       >
-        <LogOut size={20} />
-        <span className="nav-icon-label">Log out</span>
+        <LogOut size={14} />
+        Logout
       </button>
-      <div className="nav-rail-icon">
-        <Newspaper size={18} />
-      </div>
     </aside>
   );
 }

@@ -3,6 +3,7 @@ import {
   getMe,
   login,
   signup,
+  updateProfile,
   updateProfilePicture
 } from "../controllers/authController.js";
 import protect from "../middleware/authMiddleware.js";
@@ -13,6 +14,7 @@ const router = express.Router();
 router.post("/signup", signup);
 router.post("/login", login);
 router.get("/me", protect, getMe);
+router.patch("/profile", protect, updateProfile);
 router.patch(
   "/profile-picture",
   protect,

@@ -16,18 +16,31 @@ import { initializeSocket } from "./socket/socket.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const allowedOrigins = new Set([
+const normalizeOrigin = (value = "") => value.trim().replace(/\/+$/, "");
+
+const configuredClientUrls = [
   process.env.CLIENT_URL,
+  ...(process.env.CLIENT_URLS || "").split(",")
+]
+  .map((value) => normalizeOrigin(value || ""))
+  .filter(Boolean);
+
+const allowedOrigins = new Set([
+  ...configuredClientUrls,
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:5174",
   "http://127.0.0.1:5174"
-]);
+].map(normalizeOrigin));
+
+const vercelPreviewRegex = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
 
 const corsOptions = {
   origin: (origin, callback) => {
+    const normalizedOrigin = normalizeOrigin(origin || "");
+
     // Allow browserless tools and common local dev origins.
-    if (!origin || allowedOrigins.has(origin)) {
+    if (!origin || allowedOrigins.has(normalizedOrigin) || vercelPreviewRegex.test(normalizedOrigin)) {
       return callback(null, true);
     }
 

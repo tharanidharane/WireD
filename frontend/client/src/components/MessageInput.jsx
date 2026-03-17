@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Image, Mic, Paperclip, SendHorizontal, Smile } from "lucide-react";
+import { Plus, SendHorizontal, Smile } from "lucide-react";
 
 const EMOJI_OPTIONS = ["😀", "😂", "😍", "👍", "🔥", "🎉", "🙏", "💬", "😎", "❤️"];
 
@@ -195,7 +195,7 @@ const MessageInput = forwardRef(function MessageInput(
             disabled={disabled}
             aria-label="Add attachment"
           >
-            <Paperclip size={18} />
+            <Plus size={18} />
           </button>
 
           <input
@@ -204,7 +204,7 @@ const MessageInput = forwardRef(function MessageInput(
             onChange={handleTextChange}
             onBlur={onTypingStop}
             className={voiceMode ? "voice-mode-input" : ""}
-            placeholder=""
+            placeholder="Type your message here..."
             aria-label="Message"
             disabled={disabled || voiceMode}
           />
@@ -226,25 +226,6 @@ const MessageInput = forwardRef(function MessageInput(
               aria-label="Add emoji"
             >
               <Smile size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              className="composer-tool mobile-hidden"
-              disabled={disabled}
-              aria-label="Upload image"
-            >
-              <Image size={18} />
-            </button>
-            <button
-              type="button"
-              className="composer-tool"
-              onClick={handleToggleRecording}
-              disabled={disabled}
-              aria-label="Record voice message"
-              title={isRecording ? "Stop recording" : "Record voice message"}
-            >
-              <Mic size={18} />
             </button>
             <button type="submit" className="composer-send" disabled={disabled} aria-label="Send message">
               <SendHorizontal size={18} />

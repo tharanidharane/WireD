@@ -5,6 +5,15 @@ import User from "../models/User.js";
 const createToken = (userId) =>
   jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
+const serializeUser = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  profilePicture: user.profilePicture,
+  bio: user.bio || "",
+  createdAt: user.createdAt
+});
+
 export const signup = async (req, res) => {
   try {
     const name = req.body.name?.trim();
@@ -29,13 +38,7 @@ export const signup = async (req, res) => {
 
     return res.status(201).json({
       token: createToken(user._id),
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        profilePicture: user.profilePicture,
-        createdAt: user.createdAt
-      }
+      user: serializeUser(user)
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -67,20 +70,36 @@ export const login = async (req, res) => {
 
     return res.json({
       token: createToken(user._id),
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        profilePicture: user.profilePicture,
-        createdAt: user.createdAt
-      }
+      user: serializeUser(user)
     });
   } catch (error) {
     return res.status(500).json({ message: "Login failed", error: error.message });
   }
 };
 
-export const getMe = async (req, res) => res.json(req.user);
+export const getMe = async (req, res) => res.json(serializeUser(req.user));
+
+export const updateProfile = async (req, res) => {
+  try {
+    const name = req.body.name?.trim();
+    const bio = req.body.bio?.trim() || "";
+
+    if (!name) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+
+    req.user.name = name;
+    req.user.bio = bio.slice(0, 280);
+    await req.user.save();
+
+    return res.json({
+      message: "Profile updated",
+      user: serializeUser(req.user)
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Could not update profile" });
+  }
+};
 
 export const updateProfilePicture = async (req, res) => {
   try {
@@ -93,13 +112,7 @@ export const updateProfilePicture = async (req, res) => {
 
     return res.json({
       message: "Profile picture updated",
-      user: {
-        _id: req.user._id,
-        name: req.user.name,
-        email: req.user.email,
-        profilePicture: req.user.profilePicture,
-        createdAt: req.user.createdAt
-      }
+      user: serializeUser(req.user)
     });
   } catch (error) {
     return res.status(500).json({ message: "Could not update profile picture" });

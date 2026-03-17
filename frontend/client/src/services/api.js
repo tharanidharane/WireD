@@ -18,6 +18,7 @@ export const authApi = {
   signup: (payload) => api.post("/auth/signup", payload),
   login: (payload) => api.post("/auth/login", payload),
   me: () => api.get("/auth/me"),
+  updateProfile: (payload) => api.patch("/auth/profile", payload),
   uploadProfilePicture: (formData) =>
     api.patch("/auth/profile-picture", formData, {
       headers: { "Content-Type": "multipart/form-data" }

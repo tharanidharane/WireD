@@ -1,4 +1,4 @@
-import { Download, Eye, Flame, Image as ImageIcon, Play, Smile, Trash2 } from "lucide-react";
+import { Download, CheckCheck, Image as ImageIcon, Trash2 } from "lucide-react";
 import AudioMessagePlayer from "./AudioMessagePlayer";
 import Avatar from "./Avatar";
 import { getAssetUrl } from "../utils/media";
@@ -76,31 +76,11 @@ function MessageBubble({
             </a>
           )}
 
-          <div className="message-reactions">
-            <button
-              type="button"
-              className="reaction-pill"
-              onClick={onOpenEmojiPicker}
-              aria-label="Add emoji"
-            >
-              <Smile size={12} />
-            </button>
-            <span className={`reaction-pill ${isRead ? "read" : ""}`} aria-label={isRead ? "Read" : "Unread"}>
-              {messageKind === "video" ? <Flame size={12} /> : <Eye size={12} />}
-            </span>
-            {messageKind === "video" && (
-              <span className="reaction-pill" aria-hidden="true">
-                <Play size={12} />
-              </span>
-            )}
-          </div>
-
           <div className="message-meta">
             <span className="message-time">{formatTime(message.timestamp)}</span>
             {isOwn && !message.pending && (
               <span className={`message-status ${isRead ? "read" : ""}`}>
-                <Eye size={12} />
-                {isRead ? "Read" : "Sent"}
+                <CheckCheck size={12} />
               </span>
             )}
             {message.pending && <span className="message-status">Sending...</span>}

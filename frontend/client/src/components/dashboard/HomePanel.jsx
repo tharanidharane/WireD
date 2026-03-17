@@ -1,71 +1,85 @@
-import { Activity, MessageSquare, Phone, Users, Video } from "lucide-react";
+import { Phone, Video } from "lucide-react";
 
 const formatCallTime = (time) => {
   if (!time) return "";
   const target = new Date(time);
-  return target.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return target.toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 };
 
-function HomePanel({ user, friends, requests, onlineUsers, callHistory = [], onOpenMessages }) {
-  const stats = [
-    { label: "Friends", value: friends.length, icon: Users },
-    { label: "Pending Requests", value: requests.length, icon: MessageSquare },
-    { label: "Online Now", value: onlineUsers.length, icon: Activity }
-  ];
+const getStatusLabel = (status) => {
+  if (status === "rejected" || status === "missed") return "Missed";
+  if (status === "accepted" || status === "started") return "Incoming";
+  if (status === "ended") return "Outgoing";
+  return "Incoming";
+};
+
+function HomePanel({ callHistory = [] }) {
+  const rows = callHistory;
 
   return (
-    <section className="dashboard-panel">
-      <div className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Overview</p>
-          <h1>Welcome back, {user.name || "User"}</h1>
-          <p className="dashboard-copy">
-            Keep your messages, calls, and connections in a single calm place inspired by the new design system.
-          </p>
-        </div>
-        <button type="button" className="primary-action" onClick={onOpenMessages}>
-          Open Messages
-        </button>
+    <section className="workspace-panel calls-panel">
+      <div className="section-headline">
+        <h1>Call History</h1>
+        <p>Manage and review your recent communications and missed connections.</p>
       </div>
 
-      <div className="stats-grid">
-        {stats.map(({ label, value, icon: Icon }) => (
-          <article key={label} className="stat-card">
-            <div className="stat-icon">
-              <Icon size={18} />
-            </div>
-            <strong>{value}</strong>
-            <span>{label}</span>
-          </article>
-        ))}
+      <div className="tabs-strip">
+        <button type="button" className="tab-link active">All Calls</button>
+        <button type="button" className="tab-link">Missed</button>
+        <button type="button" className="tab-link">Incoming</button>
+        <button type="button" className="tab-link">Outgoing</button>
       </div>
 
-      <article className="content-card call-history-panel">
-        <div className="panel-header-row compact">
-          <h4>Call history</h4>
-        </div>
+      <div className="calls-table-wrap">
+        <table className="calls-table">
+          <thead>
+            <tr>
+              <th>CONTACT</th>
+              <th>TYPE</th>
+              <th>STATUS</th>
+              <th>DATE & TIME</th>
+              <th>ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={5}>No call records yet.</td>
+              </tr>
+            ) : rows.map((entry) => {
+              const statusLabel = getStatusLabel(entry.status);
+              return (
+                <tr key={entry.id}>
+                  <td className="contact-name">{entry.peerName}</td>
+                  <td className="call-type-cell">
+                    {entry.callType === "video" ? <Video size={14} /> : <Phone size={14} />}
+                    {entry.callType === "video" ? "Video Call" : "Audio Call"}
+                  </td>
+                  <td>
+                    <span className={`status-pill ${statusLabel.toLowerCase()}`}>{statusLabel}</span>
+                  </td>
+                  <td>{formatCallTime(entry.timestamp)}</td>
+                  <td className="action-link">{statusLabel === "Missed" ? "Redial" : "Details"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-        {callHistory.length === 0 ? (
-          <p className="small-muted">No calls yet. Start an audio or video call to see history here.</p>
-        ) : (
-          <div className="call-history-list">
-            {callHistory.map((entry) => (
-              <div key={entry.id} className="call-history-row">
-                <div className="call-history-icon">
-                  {entry.callType === "video" ? <Video size={16} /> : <Phone size={16} />}
-                </div>
-
-                <div className="call-history-copy">
-                  <strong>{entry.peerName}</strong>
-                  <p>{entry.direction} {entry.callType} call • {entry.status}</p>
-                </div>
-
-                <span className="small-muted">{formatCallTime(entry.timestamp)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </article>
+      <div className="pagination-row">
+        <button type="button">&lt;</button>
+        <button type="button" className="active">1</button>
+        <button type="button">2</button>
+        <button type="button">3</button>
+        <button type="button">&gt;</button>
+      </div>
     </section>
   );
 }
