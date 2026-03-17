@@ -951,11 +951,21 @@ video {
   min-width: 0;
 }
 
-.chat-room-heading-copy h2,
+.chat-room-heading-copy h2 {
+  color: #0d0d14;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .chat-room-heading-copy p {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .chat-room-heading-copy h2 {
+  color: #f0f0f8;
 }
 
 .chat-room-meta {
