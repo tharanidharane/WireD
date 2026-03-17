@@ -781,8 +781,13 @@ video {
 }
 
 .chat-list-item:hover,
-.chat-list-item.active {
+.chat-list-item:hover {
   background: var(--surface-soft);
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-list-item.active {
+  background: var(--accent);
   box-shadow: var(--shadow-sm);
 }
 
@@ -863,17 +868,17 @@ video {
 
 .chat-list-item.active .chat-list-topline strong,
 .chat-list-item:hover .chat-list-topline strong {
-  color: #f6f7ff;
+  color: #ffffff;
 }
 
 .chat-list-item.active .chat-list-bottomline p,
 .chat-list-item:hover .chat-list-bottomline p {
-  color: #d9dcef;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .chat-list-item.active .chat-list-topline span,
 .chat-list-item:hover .chat-list-topline span {
-  color: #c4c8e6;
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .chat-unread-badge {
