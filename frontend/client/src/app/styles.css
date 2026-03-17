@@ -566,12 +566,17 @@ video {
 
 .chat-list-header h2,
 .dashboard-panel h1,
-.panel-header-row h3,
-.chat-room-heading h2 {
+.panel-header-row h3 {
   margin: 4px 0 0;
   font-size: clamp(1.5rem, 2vw, 2.3rem);
   line-height: 1.05;
   color: #202022;
+}
+
+.chat-room-heading h2 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  line-height: 1.2;
 }
 
 .chat-search {
@@ -951,7 +956,9 @@ video {
 }
 
 .chat-room-heading-copy h2 {
-  color: #0d0d14;
+  color: var(--text) !important;
+  font-size: 1rem;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -961,10 +968,6 @@ video {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-[data-theme="dark"] .chat-room-heading-copy h2 {
-  color: #f0f0f8;
 }
 
 .chat-room-meta {
