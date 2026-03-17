@@ -16,7 +16,19 @@ import { authApi, friendApi, getErrorMessage, messageApi } from "../services/api
 
 const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 const rtcConfig = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    {
+      urls: [
+        "turn:openrelay.metered.ca:80",
+        "turn:openrelay.metered.ca:443",
+        "turn:openrelay.metered.ca:443?transport=tcp"
+      ],
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    }
+  ]
 };
 
 const messageSections = new Set(["message", "archive", "calls"]);
@@ -146,9 +158,7 @@ function Chat() {
     const remoteStream = new MediaStream();
     remoteStreamRef.current = remoteStream;
 
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = remoteStream;
-    }
+    // Note: remoteVideoRef is not mounted yet here — wired up via the activeCall useEffect below
 
     peer.onicecandidate = (event) => {
       if (event.candidate) {
@@ -161,6 +171,8 @@ function Chat() {
 
     peer.ontrack = (event) => {
       event.streams[0].getTracks().forEach((track) => remoteStream.addTrack(track));
+      // If the video element is already mounted, assign directly.
+      // If not yet mounted, the activeCall useEffect will catch it.
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStream;
       }
@@ -188,10 +200,7 @@ function Chat() {
     });
 
     localStreamRef.current = stream;
-
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = stream;
-    }
+    // Note: localVideoRef is not mounted yet here — wired up via the activeCall useEffect below
 
     return stream;
   };
@@ -227,6 +236,19 @@ function Chat() {
   useEffect(() => {
     localStorage.setItem("wired_archived_chats", JSON.stringify(archivedChatIds));
   }, [archivedChatIds]);
+
+  // Wire up local/remote video streams after the call UI (VideoCall/AudioCall) mounts.
+  // This fixes the black screen race condition where ontrack or getUserMedia fires
+  // before setActiveCall has caused the video <ref> elements to attach to the DOM.
+  useEffect(() => {
+    if (!activeCall) return;
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+    if (remoteVideoRef.current && remoteStreamRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    }
+  }, [activeCall]);
 
   const hydrateSidebar = async () => {
     const [friendsResponse, requestsResponse] = await Promise.all([
