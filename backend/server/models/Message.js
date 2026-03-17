@@ -9,7 +9,17 @@ const messageSchema = new mongoose.Schema({
   receiverId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true
+    default: null
+  },
+  groupId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Group",
+    default: null
+  },
+  conversationType: {
+    type: String,
+    enum: ["direct", "group"],
+    default: "direct"
   },
   messageText: {
     type: String,
@@ -31,6 +41,7 @@ const messageSchema = new mongoose.Schema({
 });
 
 messageSchema.index({ senderId: 1, receiverId: 1, timestamp: -1 });
+messageSchema.index({ groupId: 1, timestamp: -1 });
 
 const Message = mongoose.model("Message", messageSchema);
 

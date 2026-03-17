@@ -6,9 +6,12 @@ function ChatHeader({
   activeFriend,
   typingUser,
   isOnline,
+  onlineCount,
+  memberCount,
   messageCount,
   isMutedChat,
   isArchived,
+  conversationType = "direct",
   onStartAudioCall,
   onStartVideoCall,
   disableCallActions,
@@ -40,13 +43,18 @@ function ChatHeader({
     setMenuOpen(false);
   };
 
+  const subtitle = typingUser ||
+    (conversationType === "group"
+      ? `${memberCount || 0} members, ${onlineCount || 0} online`
+      : `2 members, ${isOnline ? "1 online" : "offline"}`);
+
   return (
     <header className="chat-room-header">
       <div className="chat-room-heading">
         <Avatar user={activeFriend.user} className="large" />
         <div className="chat-room-heading-copy">
           <h2>{activeFriend.user.name}</h2>
-          <p>{typingUser || `2 members, ${isOnline ? "1 online" : "offline"}`}</p>
+          <p>{subtitle}</p>
         </div>
       </div>
 
@@ -89,18 +97,24 @@ function ChatHeader({
               <button type="button" onClick={() => handleAction(onToggleArchive)}>
                 {isArchived ? "Move to chats" : "Archive chat"}
               </button>
-              <button type="button" onClick={() => handleAction(onDeleteChat)}>
-                Delete chat
-              </button>
+              {conversationType === "direct" && (
+                <button type="button" onClick={() => handleAction(onDeleteChat)}>
+                  Delete chat
+                </button>
+              )}
               <button type="button" onClick={() => handleAction(onToggleMuteNotifications)}>
                 {isMutedChat ? "Unmute notifications" : "Mute notifications"}
               </button>
-              <button type="button" onClick={() => handleAction(onBlockUser)}>
-                Block user
-              </button>
-              <button type="button" onClick={() => handleAction(onViewProfile)}>
-                View profile
-              </button>
+              {conversationType === "direct" && (
+                <button type="button" onClick={() => handleAction(onBlockUser)}>
+                  Block user
+                </button>
+              )}
+              {conversationType === "direct" && (
+                <button type="button" onClick={() => handleAction(onViewProfile)}>
+                  View profile
+                </button>
+              )}
             </div>
           )}
         </div>

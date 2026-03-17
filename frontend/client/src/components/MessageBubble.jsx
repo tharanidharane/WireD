@@ -20,7 +20,7 @@ function MessageBubble({
   isRead
 }) {
   const canDelete = isOwn && !message.pending;
-  const sender = isOwn ? currentUser : activeFriend;
+  const sender = isOwn ? currentUser : message.sender || activeFriend;
   const messageKind = getMessageKind(message);
   const mediaUrl = message.mediaUrl ? getAssetUrl(message.mediaUrl) : "";
 

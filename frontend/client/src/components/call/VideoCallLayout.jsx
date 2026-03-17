@@ -3,7 +3,8 @@ import CallControls from "./CallControls";
 
 function VideoCallLayout({
   localVideoRef,
-  remoteVideoRef,
+  remoteParticipants = [],
+  bindRemoteVideo,
   callStatus,
   remoteName,
   currentUserName = "You",
@@ -15,12 +16,34 @@ function VideoCallLayout({
   onShareScreen,
   isAudioOnly = false
 }) {
+  const visibleRemoteParticipants = remoteParticipants.filter((participant) => participant?.user);
+
   return (
     <div className="call-overlay">
       <div className={`call-stage-shell ${isAudioOnly ? "audio-only" : ""}`}>
         <div className="call-stage-main">
           {!isAudioOnly ? (
-            <video ref={remoteVideoRef} autoPlay playsInline className="call-main-video" />
+            visibleRemoteParticipants.length > 0 ? (
+              <div className={`call-video-grid ${visibleRemoteParticipants.length > 1 ? "multi" : "single"}`}>
+                {visibleRemoteParticipants.map((participant) => (
+                  <div key={participant.user._id} className="call-video-tile">
+                    <video
+                      ref={(node) => bindRemoteVideo?.(participant.user._id, node)}
+                      autoPlay
+                      playsInline
+                      className="call-main-video"
+                    />
+                    <div className="call-video-label">{participant.user.name}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="call-waiting-stage">
+                <Avatar user={{ name: remoteName }} className="call-audio-avatar" />
+                <h2>{remoteName}</h2>
+                <p>{callStatus}</p>
+              </div>
+            )
           ) : (
             <div className="call-audio-stage">
               <Avatar user={{ name: remoteName }} className="call-audio-avatar" />
@@ -56,15 +79,17 @@ function VideoCallLayout({
         </div>
 
         <div className="call-stage-sidebar">
-          <h3>Chat</h3>
+          <h3>Call</h3>
           <div className="call-participant-stack">
-            <div className="call-participant-card">
-              <Avatar user={{ name: remoteName }} className="large" />
-              <div>
-                <strong>{remoteName}</strong>
-                <p>Active speaker</p>
+            {visibleRemoteParticipants.map((participant) => (
+              <div key={participant.user._id} className="call-participant-card">
+                <Avatar user={participant.user} className="large" />
+                <div>
+                  <strong>{participant.user.name}</strong>
+                  <p>Connected participant</p>
+                </div>
               </div>
-            </div>
+            ))}
             <div className="call-participant-card">
               <Avatar user={{ name: currentUserName }} className="large" />
               <div>
@@ -81,10 +106,12 @@ function VideoCallLayout({
 
         <div className="call-stage-footer">
           <div className="call-tile-row">
-            <div className="call-mini-tile">
-              <Avatar user={{ name: remoteName }} className="tiny" />
-              <span>{remoteName}</span>
-            </div>
+            {visibleRemoteParticipants.map((participant) => (
+              <div key={participant.user._id} className="call-mini-tile">
+                <Avatar user={participant.user} className="tiny" />
+                <span>{participant.user.name}</span>
+              </div>
+            ))}
             <div className="call-mini-tile">
               <Avatar user={{ name: currentUserName }} className="tiny" />
               <span>{currentUserName}</span>

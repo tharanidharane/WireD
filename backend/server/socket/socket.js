@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import Group from "../models/Group.js";
 
 const onlineUsers = new Map();
 
@@ -25,6 +26,16 @@ export const emitToUser = (io, userId, event, payload) => {
   sockets.forEach((socketId) => io.to(socketId).emit(event, payload));
 };
 
+const emitToUsers = (io, userIds = [], event, payload, excludeUserId = null) => {
+  userIds.forEach((userId) => {
+    if (excludeUserId && userId?.toString() === excludeUserId?.toString()) {
+      return;
+    }
+
+    emitToUser(io, userId, event, payload);
+  });
+};
+
 const verifySocket = (socket, next) => {
   try {
     const token = socket.handshake.auth?.token;
@@ -45,8 +56,23 @@ export const initializeSocket = (io) => {
 
   io.on("connection", (socket) => {
     const userId = socket.userId.toString();
+    socket.join(`user:${userId}`);
     addUserSocket(userId, socket.id);
     io.emit("presence:update", getOnlineUserIds());
+
+    socket.on("join-groups", async ({ groupIds = [] } = {}) => {
+      const validIds = Array.isArray(groupIds) ? groupIds.filter(Boolean) : [];
+      if (validIds.length === 0) return;
+
+      const groups = await Group.find({
+        _id: { $in: validIds },
+        members: userId
+      }).select("_id");
+
+      groups.forEach((group) => {
+        socket.join(`group:${group._id.toString()}`);
+      });
+    });
 
     socket.on("typing:start", ({ to, fromName }) => {
       emitToUser(io, to, "typing:start", { from: userId, fromName });
@@ -54,6 +80,55 @@ export const initializeSocket = (io) => {
 
     socket.on("typing:stop", ({ to }) => {
       emitToUser(io, to, "typing:stop", { from: userId });
+    });
+
+    socket.on("call:ring", (payload) => {
+      emitToUsers(io, payload.toUserIds || [], "call:incoming", {
+        from: userId,
+        caller: payload.caller,
+        participants: payload.participants || [],
+        callType: payload.callType,
+        conversationType: payload.conversationType,
+        groupId: payload.groupId || null,
+        conversationName: payload.conversationName || ""
+      }, userId);
+    });
+
+    socket.on("call:participant-joined", (payload) => {
+      emitToUsers(io, payload.toUserIds || [], "call:participant-joined", {
+        from: userId,
+        participant: payload.participant,
+        callType: payload.callType,
+        conversationType: payload.conversationType,
+        groupId: payload.groupId || null
+      }, userId);
+    });
+
+    socket.on("call:signal", (payload) => {
+      emitToUser(io, payload.to, "call:signal", {
+        from: userId,
+        description: payload.description,
+        candidate: payload.candidate,
+        callType: payload.callType,
+        conversationType: payload.conversationType,
+        groupId: payload.groupId || null
+      });
+    });
+
+    socket.on("call:rejected", (payload) => {
+      emitToUsers(io, payload.toUserIds || [], "call:rejected", {
+        from: userId,
+        groupId: payload.groupId || null,
+        conversationType: payload.conversationType
+      }, userId);
+    });
+
+    socket.on("call:ended", (payload) => {
+      emitToUsers(io, payload.toUserIds || [], "call:ended", {
+        from: userId,
+        groupId: payload.groupId || null,
+        conversationType: payload.conversationType
+      }, userId);
     });
 
     socket.on("call-user", (payload) => {

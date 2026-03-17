@@ -9,6 +9,7 @@ import { Server } from "socket.io";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
+import groupRoutes from "./routes/groupRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import { initializeSocket } from "./socket/socket.js";
 
@@ -60,6 +61,7 @@ app.get("/api/health", (_, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/friends", friendRoutes);
+app.use("/api/groups", groupRoutes);
 app.use("/api/messages", messageRoutes);
 
 app.use((error, _, res, __) => {

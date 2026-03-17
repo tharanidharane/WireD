@@ -10,9 +10,10 @@ const getPreviewText = (friend) =>
 function ChatListPanel({
   currentUser,
   friends,
+  groups,
   requests,
   searchResults,
-  activeFriend,
+  activeConversation,
   onlineUsers,
   unreadCounts,
   activeFilter,
@@ -20,10 +21,11 @@ function ChatListPanel({
   archivedCount,
   archivedChatIds,
   onChangeFilter,
-  onSelectFriend,
+  onSelectConversation,
   onSearch,
   onSendFriendRequest,
   onAcceptRequest,
+  onCreateGroup,
   friendActionMessage,
   mobileListOpen,
   onToggleMobileList,
@@ -33,28 +35,46 @@ function ChatListPanel({
   const [query, setQuery] = useState("");
   const [showNewChatPanel, setShowNewChatPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedMemberIds, setSelectedMemberIds] = useState([]);
   const searchInputRef = useRef(null);
 
   const previewRequests = useMemo(() => requests.slice(0, 3), [requests]);
-  const visibleFriends = useMemo(() => {
-    const scopedFriends = isArchiveView
-      ? friends.filter((friend) => archivedChatIds.includes(friend.user._id))
-      : friends.filter((friend) => !archivedChatIds.includes(friend.user._id));
+  const directConversations = useMemo(
+    () => friends.map((friend) => ({ ...friend, type: "direct" })),
+    [friends]
+  );
+
+  const groupConversations = useMemo(() => groups.map((group) => ({ ...group, type: "group" })), [groups]);
+
+  const visibleConversations = useMemo(() => {
+    const allConversations = [...directConversations, ...groupConversations];
+    const scopedConversations = isArchiveView
+      ? allConversations.filter((conversation) => archivedChatIds.includes(conversation.user._id))
+      : allConversations.filter((conversation) => !archivedChatIds.includes(conversation.user._id));
 
     if (activeFilter === "unread") {
-      return scopedFriends.filter((friend) => (unreadCounts[friend.user._id] || 0) > 0);
-    }
-
-    if (activeFilter === "favorites") {
-      return scopedFriends.filter(
-        (friend) =>
-          onlineUsers.includes(friend.user._id) ||
-          ["image", "video", "audio"].includes(getMessageKind(friend.lastMessage))
+      return scopedConversations.filter(
+        (conversation) => (unreadCounts[conversation.user._id] || 0) > 0
       );
     }
 
-    return scopedFriends;
-  }, [activeFilter, archivedChatIds, friends, isArchiveView, onlineUsers, unreadCounts]);
+    if (activeFilter === "favorites") {
+      return scopedConversations.filter(
+        (conversation) =>
+          (conversation.type === "group"
+            ? conversation.members?.some((member) => onlineUsers.includes(member._id))
+            : onlineUsers.includes(conversation.user._id)) ||
+          ["image", "video", "audio"].includes(getMessageKind(conversation.lastMessage))
+      );
+    }
+
+    return scopedConversations.sort((left, right) => {
+      const leftTime = new Date(left.lastMessage?.timestamp || left.updatedAt || 0).getTime();
+      const rightTime = new Date(right.lastMessage?.timestamp || right.updatedAt || 0).getTime();
+      return rightTime - leftTime;
+    });
+  }, [activeFilter, archivedChatIds, directConversations, groupConversations, isArchiveView, onlineUsers, unreadCounts]);
 
   const handleSearch = (value) => {
     setQuery(value);
@@ -66,6 +86,27 @@ function ChatListPanel({
       onFocusSearch.current = () => searchInputRef.current?.focus();
     }
   }, [onFocusSearch]);
+
+  const handleToggleMember = (memberId) => {
+    setSelectedMemberIds((current) =>
+      current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId]
+    );
+  };
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedMemberIds.length === 0) {
+      return;
+    }
+
+    await onCreateGroup({
+      name: groupName.trim(),
+      memberIds: selectedMemberIds
+    });
+
+    setGroupName("");
+    setSelectedMemberIds([]);
+    setShowNewChatPanel(false);
+  };
 
   return (
     <aside className={`chat-list-panel ${mobileListOpen ? "open" : ""}`}>
@@ -117,6 +158,39 @@ function ChatListPanel({
             >
               Focus search
             </button>
+            <div className="group-create-panel">
+              <strong>Create group</strong>
+              <input
+                value={groupName}
+                onChange={(event) => setGroupName(event.target.value)}
+                placeholder="Group name"
+              />
+              <div className="group-create-member-list">
+                {friends.length === 0 ? (
+                  <p className="small-muted">Add friends first to create a group.</p>
+                ) : (
+                  friends.map((friend) => (
+                    <label key={friend.user._id} className="group-create-member-row">
+                      <input
+                        type="checkbox"
+                        checked={selectedMemberIds.includes(friend.user._id)}
+                        onChange={() => handleToggleMember(friend.user._id)}
+                      />
+                      <Avatar user={friend.user} className="tiny" />
+                      <span>{friend.user.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+              <button
+                type="button"
+                className="mini-accent-button"
+                onClick={handleCreateGroup}
+                disabled={!groupName.trim() || selectedMemberIds.length === 0}
+              >
+                Create group
+              </button>
+            </div>
           </div>
         )}
 
@@ -238,27 +312,29 @@ function ChatListPanel({
               <div className="chat-list-section">
                 <div className="chat-list-section-header">
                   <strong>{isArchiveView ? "Archived chats" : "Recent chats"}</strong>
-                  <span>{isArchiveView ? archivedCount : visibleFriends.length}</span>
+                  <span>{isArchiveView ? archivedCount : visibleConversations.length}</span>
                 </div>
 
-                {visibleFriends.length === 0 ? (
+                {visibleConversations.length === 0 ? (
                   <div className="empty-panel">
                     <strong>No chats in this filter</strong>
                     <p>Try another filter or search for friends.</p>
                   </div>
                 ) : (
-                  visibleFriends.map((friend) => (
+                  visibleConversations.map((conversation) => (
                     <ChatItem
-                      key={friend.user._id}
-                      title={friend.user.name}
-                      subtitle={getPreviewText(friend)}
-                      time={friend.lastMessage?.timestamp}
-                      badge={unreadCounts[friend.user._id]}
-                      avatarUser={friend.user}
-                      active={activeFriend?.user._id === friend.user._id}
-                      isOnline={onlineUsers.includes(friend.user._id)}
-                      isPinned={["image", "video", "audio"].includes(getMessageKind(friend.lastMessage))}
-                      onClick={() => onSelectFriend(friend)}
+                      key={`${conversation.type}-${conversation.user._id}`}
+                      title={conversation.user.name}
+                      subtitle={getPreviewText(conversation)}
+                      time={conversation.lastMessage?.timestamp}
+                      badge={unreadCounts[conversation.user._id]}
+                      avatarUser={conversation.user}
+                      active={activeConversation?.type === conversation.type && activeConversation?.user._id === conversation.user._id}
+                      isOnline={conversation.type === "group"
+                        ? conversation.members?.some((member) => onlineUsers.includes(member._id))
+                        : onlineUsers.includes(conversation.user._id)}
+                      isPinned={["image", "video", "audio"].includes(getMessageKind(conversation.lastMessage))}
+                      onClick={() => onSelectConversation(conversation)}
                     />
                   ))
                 )}

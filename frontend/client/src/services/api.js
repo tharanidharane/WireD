@@ -33,13 +33,24 @@ export const friendApi = {
   delete: (friendshipId) => api.delete(`/friends/${friendshipId}`)
 };
 
+export const groupApi = {
+  list: () => api.get("/groups"),
+  create: (payload) => api.post("/groups", payload)
+};
+
 export const messageApi = {
   getMessages: (userId) => api.get(`/messages/${userId}`),
+  getGroupMessages: (groupId) => api.get(`/messages/group/${groupId}`),
   getRecent: () => api.get("/messages/recent"),
   deleteSingle: (messageId) => api.delete(`/messages/single/${messageId}`),
   clearConversation: (userId) => api.delete(`/messages/conversation/${userId}`),
+  clearGroupConversation: (groupId) => api.delete(`/messages/group/${groupId}`),
   send: (receiverId, formData) =>
     api.post(`/messages/send/${receiverId}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    }),
+  sendGroup: (groupId, formData) =>
+    api.post(`/messages/group/${groupId}`, formData, {
       headers: { "Content-Type": "multipart/form-data" }
     })
 };

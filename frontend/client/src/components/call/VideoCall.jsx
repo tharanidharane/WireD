@@ -2,7 +2,8 @@ import VideoCallLayout from "./VideoCallLayout";
 
 function VideoCall({
   localVideoRef,
-  remoteVideoRef,
+  remoteParticipants,
+  bindRemoteVideo,
   callStatus,
   remoteName,
   isMuted,
@@ -16,7 +17,8 @@ function VideoCall({
   return (
     <VideoCallLayout
       localVideoRef={localVideoRef}
-      remoteVideoRef={remoteVideoRef}
+      remoteParticipants={remoteParticipants}
+      bindRemoteVideo={bindRemoteVideo}
       callStatus={callStatus}
       remoteName={remoteName}
       currentUserName={currentUserName}

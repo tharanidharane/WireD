@@ -32,7 +32,9 @@ function MessageList({
       <div className="chat-message-stream">
         <div className="empty-panel large">
           <strong>No messages yet</strong>
-          <p>Say hello and start the conversation with {activeFriend.user.name}.</p>
+          <p>
+            Say hello and start the conversation with {activeFriend.type === "group" ? "the group" : activeFriend.user.name}.
+          </p>
         </div>
       </div>
     );

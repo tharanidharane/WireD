@@ -13,6 +13,9 @@ const router = express.Router();
 
 router.use(protect);
 router.get("/recent", getRecentChats);
+router.get("/group/:groupId", getMessages);
+router.post("/group/:groupId", messageUpload.single("media"), sendMessage);
+router.delete("/group/:groupId", clearConversation);
 router.delete("/single/:messageId", deleteMessage);
 router.delete("/conversation/:userId", clearConversation);
 router.get("/:userId", getMessages);
