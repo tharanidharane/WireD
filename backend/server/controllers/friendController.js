@@ -49,9 +49,19 @@ export const searchUsersByEmail = async (req, res) => {
       return res.json([]);
     }
 
+    const existingFriendships = await Friend.find({
+      $or: [{ requester: req.user._id }, { recipient: req.user._id }]
+    }).select("requester recipient");
+
+    const excludedUserIds = new Set([req.user._id.toString()]);
+    existingFriendships.forEach((friendship) => {
+      excludedUserIds.add(friendship.requester.toString());
+      excludedUserIds.add(friendship.recipient.toString());
+    });
+
     const users = await User.find({
       email: { $regex: email.trim(), $options: "i" },
-      _id: { $ne: req.user._id }
+      _id: { $nin: Array.from(excludedUserIds) }
     }).select("_id name email profilePicture createdAt");
 
     return res.json(users);

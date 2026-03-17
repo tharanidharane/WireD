@@ -251,12 +251,12 @@ function ChatListPanel({
 
         {friendActionMessage ? <p className="panel-status">{friendActionMessage}</p> : null}
 
-        {query.trim() ? (
+        {query.trim() && (
           <div className="chat-list-scroll search-mode">
             {searchResults.length === 0 ? (
               <div className="empty-panel">
                 <strong>No matching users</strong>
-                <p>Try another email address.</p>
+                <p>People who are already your friends are not shown here.</p>
               </div>
             ) : (
               searchResults.map((result) => (
@@ -279,69 +279,67 @@ function ChatListPanel({
               ))
             )}
           </div>
-        ) : (
-          <>
-            {requests.length > 0 && (
-              <div className="request-strip">
-                <div className="request-strip-header">
-                  <strong>Friend requests</strong>
-                  <span>{requests.length}</span>
-                </div>
-                <div className="request-strip-list">
-                  {previewRequests.map((request) => (
-                    <div key={request._id} className="request-chip">
-                      <Avatar user={request.requester} className="tiny" />
-                      <div className="request-chip-copy">
-                        <strong>{request.requester.name}</strong>
-                        <p>Wants to connect</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="mini-accent-button"
-                        onClick={() => onAcceptRequest(request._id)}
-                      >
-                        Accept
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="chat-list-scroll">
-              <div className="chat-list-section">
-                <div className="chat-list-section-header">
-                  <strong>{isArchiveView ? "Archived chats" : "Recent chats"}</strong>
-                  <span>{isArchiveView ? archivedCount : visibleConversations.length}</span>
-                </div>
-
-                {visibleConversations.length === 0 ? (
-                  <div className="empty-panel">
-                    <strong>No chats in this filter</strong>
-                    <p>Try another filter or search for friends.</p>
-                  </div>
-                ) : (
-                  visibleConversations.map((conversation) => (
-                    <ChatItem
-                      key={`${conversation.type}-${conversation.user._id}`}
-                      title={conversation.user.name}
-                      subtitle={getPreviewText(conversation)}
-                      time={conversation.lastMessage?.timestamp}
-                      badge={unreadCounts[conversation.user._id]}
-                      avatarUser={conversation.user}
-                      active={activeConversation?.type === conversation.type && activeConversation?.user._id === conversation.user._id}
-                      isOnline={conversation.type === "group"
-                        ? conversation.members?.some((member) => onlineUsers.includes(member._id))
-                        : onlineUsers.includes(conversation.user._id)}
-                      isPinned={["image", "video", "audio"].includes(getMessageKind(conversation.lastMessage))}
-                      onClick={() => onSelectConversation(conversation)}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          </>
         )}
+
+        {requests.length > 0 && !query.trim() && (
+          <div className="request-strip">
+            <div className="request-strip-header">
+              <strong>Friend requests</strong>
+              <span>{requests.length}</span>
+            </div>
+            <div className="request-strip-list">
+              {previewRequests.map((request) => (
+                <div key={request._id} className="request-chip">
+                  <Avatar user={request.requester} className="tiny" />
+                  <div className="request-chip-copy">
+                    <strong>{request.requester.name}</strong>
+                    <p>Wants to connect</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="mini-accent-button"
+                    onClick={() => onAcceptRequest(request._id)}
+                  >
+                    Accept
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="chat-list-scroll">
+          <div className="chat-list-section">
+            <div className="chat-list-section-header">
+              <strong>{isArchiveView ? "Archived chats" : "Recent chats"}</strong>
+              <span>{isArchiveView ? archivedCount : visibleConversations.length}</span>
+            </div>
+
+            {visibleConversations.length === 0 ? (
+              <div className="empty-panel">
+                <strong>No chats in this filter</strong>
+                <p>Try another filter or search for friends.</p>
+              </div>
+            ) : (
+              visibleConversations.map((conversation) => (
+                <ChatItem
+                  key={`${conversation.type}-${conversation.user._id}`}
+                  title={conversation.user.name}
+                  subtitle={getPreviewText(conversation)}
+                  time={conversation.lastMessage?.timestamp}
+                  badge={unreadCounts[conversation.user._id]}
+                  avatarUser={conversation.user}
+                  active={activeConversation?.type === conversation.type && activeConversation?.user._id === conversation.user._id}
+                  isOnline={conversation.type === "group"
+                    ? conversation.members?.some((member) => onlineUsers.includes(member._id))
+                    : onlineUsers.includes(conversation.user._id)}
+                  isPinned={["image", "video", "audio"].includes(getMessageKind(conversation.lastMessage))}
+                  onClick={() => onSelectConversation(conversation)}
+                />
+              ))
+            )}
+          </div>
+        </div>
 
         <div className="chat-list-footer">
           <Avatar user={currentUser} className="tiny" />
