@@ -19,7 +19,18 @@ const navItems = [
   { key: "settings", label: "Settings", icon: Settings }
 ];
 
-function NavigationSidebar({ activeSection, onChangeSection, requestsCount, onLogout, currentUser, onPrimaryAction }) {
+function NavigationSidebar({
+  activeSection,
+  onChangeSection,
+  requestsCount,
+  onLogout,
+  currentUser,
+  onPrimaryAction,
+  onToggleNotifications,
+  onToggleTheme,
+  notificationsEnabled,
+  theme
+}) {
   return (
     <aside className="nav-sidebar">
       <div className="nav-topbar nav-topbar-logo-only">
@@ -74,10 +85,22 @@ function NavigationSidebar({ activeSection, onChangeSection, requestsCount, onLo
       </div>
 
       <div className="nav-header-icons">
-        <button type="button" className="nav-top-icon" aria-label="Notifications">
+        <button
+          type="button"
+          className={`nav-top-icon ${notificationsEnabled ? "active" : ""}`}
+          aria-label={notificationsEnabled ? "Disable notifications" : "Enable notifications"}
+          aria-pressed={notificationsEnabled}
+          onClick={onToggleNotifications}
+        >
           <Bell size={14} />
         </button>
-        <button type="button" className="nav-top-icon" aria-label="Theme">
+        <button
+          type="button"
+          className={`nav-top-icon ${theme === "dark" ? "active" : ""}`}
+          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          aria-pressed={theme === "dark"}
+          onClick={onToggleTheme}
+        >
           <Moon size={14} />
         </button>
       </div>

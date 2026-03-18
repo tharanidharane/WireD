@@ -2643,6 +2643,13 @@ body::before {
   flex-shrink: 0;
 }
 
+.nav-top-icon.active,
+.nav-top-icon:hover {
+  background: #dde5ff;
+  border-color: #c8d4ff;
+  color: #3e4de0;
+}
+
 .nav-logout {
   margin-top: 8px;
   min-height: 32px;

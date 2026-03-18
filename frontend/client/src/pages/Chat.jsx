@@ -1138,6 +1138,20 @@ function Chat() {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
   };
 
+  const handleToggleNotifications = () => {
+    let nextNotificationsEnabled = false;
+
+    setPreferences((current) => {
+      nextNotificationsEnabled = !current.notifications;
+      return {
+        ...current,
+        notifications: nextNotificationsEnabled
+      };
+    });
+
+    showChatActionMessage(nextNotificationsEnabled ? "Notifications enabled." : "Notifications muted.");
+  };
+
   const handleSavePreferences = (nextPreferences) => {
     setPreferences(nextPreferences);
     setSettingsMessage("Preferences saved.");
@@ -1707,6 +1721,10 @@ function Chat() {
           onLogout={handleLogout}
           currentUser={currentUser}
           onPrimaryAction={handlePrimarySidebarAction}
+          onToggleNotifications={handleToggleNotifications}
+          onToggleTheme={handleToggleTheme}
+          notificationsEnabled={preferences.notifications}
+          theme={theme}
         />
 
         {renderWorkspace()}
