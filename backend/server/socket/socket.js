@@ -85,6 +85,7 @@ export const initializeSocket = (io) => {
     socket.on("call:ring", (payload) => {
       emitToUsers(io, payload.toUserIds || [], "call:incoming", {
         from: userId,
+        callId: payload.callId || null,
         caller: payload.caller,
         participants: payload.participants || [],
         callType: payload.callType,
@@ -97,6 +98,7 @@ export const initializeSocket = (io) => {
     socket.on("call:participant-joined", (payload) => {
       emitToUsers(io, payload.toUserIds || [], "call:participant-joined", {
         from: userId,
+        callId: payload.callId || null,
         participant: payload.participant,
         callType: payload.callType,
         conversationType: payload.conversationType,
@@ -107,6 +109,7 @@ export const initializeSocket = (io) => {
     socket.on("call:signal", (payload) => {
       emitToUser(io, payload.to, "call:signal", {
         from: userId,
+        callId: payload.callId || null,
         description: payload.description,
         candidate: payload.candidate,
         callType: payload.callType,
@@ -118,14 +121,17 @@ export const initializeSocket = (io) => {
     socket.on("call:rejected", (payload) => {
       emitToUsers(io, payload.toUserIds || [], "call:rejected", {
         from: userId,
+        callId: payload.callId || null,
         groupId: payload.groupId || null,
-        conversationType: payload.conversationType
+        conversationType: payload.conversationType,
+        reason: payload.reason || null
       }, userId);
     });
 
     socket.on("call:ended", (payload) => {
       emitToUsers(io, payload.toUserIds || [], "call:ended", {
         from: userId,
+        callId: payload.callId || null,
         groupId: payload.groupId || null,
         conversationType: payload.conversationType
       }, userId);

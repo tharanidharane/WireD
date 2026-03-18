@@ -34,7 +34,7 @@ function ChatListPanel({
   onSearch,
   onSendFriendRequest,
   onAcceptRequest,
-  onCreateGroup,
+  onOpenCreateGroup,
   onOpenArchiveView,
   mobileListOpen,
   onToggleMobileList,
@@ -84,41 +84,6 @@ function ChatListPanel({
     onSearch(value);
   };
 
-  const handleCreateGroup = async () => {
-    const options = directConversations
-      .map((friend, index) => `${index + 1}. ${friend.user.name}`)
-      .join("\n");
-
-    if (!options) {
-      window.alert("Add at least one friend before creating a group.");
-      return;
-    }
-
-    const name = window.prompt("Enter a group name:");
-    if (!name || !name.trim()) return;
-
-    const selected = window.prompt(
-      `Choose members by number (comma-separated):\n${options}`
-    );
-
-    if (!selected) return;
-
-    const indexes = [...new Set(
-      selected
-        .split(",")
-        .map((value) => Number.parseInt(value.trim(), 10) - 1)
-        .filter((value) => Number.isInteger(value) && value >= 0 && value < directConversations.length)
-    )];
-
-    const memberIds = indexes.map((index) => directConversations[index].user._id);
-    if (memberIds.length === 0) {
-      window.alert("Select at least one valid member.");
-      return;
-    }
-
-    await onCreateGroup?.({ name: name.trim(), memberIds });
-  };
-
   useEffect(() => {
     if (onFocusSearch) {
       onFocusSearch.current = () => searchInputRef.current?.focus();
@@ -132,7 +97,7 @@ function ChatListPanel({
           <div className="chat-list-title-block">
             <h2>Messages</h2>
           </div>
-          <button type="button" className="mini-accent-button" onClick={handleCreateGroup}>
+          <button type="button" className="mini-accent-button" onClick={onOpenCreateGroup}>
             Create Group
           </button>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import ChatHeader from "../components/ChatHeader";
 import ChatListPanel from "../components/ChatListPanel";
+import CreateGroupModal from "../components/CreateGroupModal";
 import ContactProfileModal from "../components/ContactProfileModal";
 import MessageInput from "../components/MessageInput";
 import MessageList from "../components/MessageList";
@@ -106,6 +107,11 @@ function Chat() {
   const pendingCandidatesRef = useRef(new Map());
   const disconnectTimersRef = useRef(new Map());
   const activeCallRef = useRef(null);
+  const incomingCallRef = useRef(null);
+  const incomingCallQueueRef = useRef([]);
+  const callNotificationRef = useRef(null);
+  const ringtoneTimerRef = useRef(null);
+  const audioContextRef = useRef(null);
 
   const [friends, setFriends] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -121,6 +127,7 @@ function Chat() {
   const [chatActionMessage, setChatActionMessage] = useState("");
   const [activeSection, setActiveSection] = useState("message");
   const [incomingCall, setIncomingCall] = useState(null);
+  const [incomingCallQueue, setIncomingCallQueue] = useState([]);
   const [activeCall, setActiveCall] = useState(null);
   const [remoteParticipants, setRemoteParticipants] = useState([]);
   const [callHistory, setCallHistory] = useState([]);
@@ -170,6 +177,8 @@ function Chat() {
       return [];
     }
   });
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
   const showChatActionMessage = (message) => {
     clearTimeout(statusTimeoutRef.current);
@@ -189,6 +198,115 @@ function Chat() {
       },
       ...current
     ].slice(0, 20));
+  };
+
+  const stopIncomingTone = () => {
+    if (ringtoneTimerRef.current) {
+      clearInterval(ringtoneTimerRef.current);
+      ringtoneTimerRef.current = null;
+    }
+  };
+
+  const playIncomingTone = () => {
+    if (!preferences.sounds || ringtoneTimerRef.current) return;
+
+    const playBeep = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+
+        if (!audioContextRef.current) {
+          audioContextRef.current = new AudioCtx();
+        }
+
+        const context = audioContextRef.current;
+        if (context.state === "suspended") {
+          context.resume().catch(() => {});
+        }
+
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.value = 880;
+
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+
+        const startAt = context.currentTime;
+        gainNode.gain.setValueAtTime(0.0001, startAt);
+        gainNode.gain.exponentialRampToValueAtTime(0.08, startAt + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.35);
+
+        oscillator.start(startAt);
+        oscillator.stop(startAt + 0.38);
+      } catch {
+        // Ignore audio API errors; incoming UI still appears.
+      }
+    };
+
+    playBeep();
+    ringtoneTimerRef.current = setInterval(playBeep, 1500);
+  };
+
+  const closeCallNotification = () => {
+    if (callNotificationRef.current) {
+      callNotificationRef.current.close();
+      callNotificationRef.current = null;
+    }
+  };
+
+  const requestDesktopPermission = async () => {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "default") return;
+
+    try {
+      await Notification.requestPermission();
+    } catch {
+      // Ignore permission prompt errors.
+    }
+  };
+
+  const showIncomingCallNotification = (callPayload) => {
+    if (!preferences.notifications || !preferences.desktopNotifications) return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+    closeCallNotification();
+
+    const title = callPayload.conversationType === "group"
+      ? `Incoming ${callPayload.callType} group call`
+      : `Incoming ${callPayload.callType} call`;
+    const body = callPayload.conversationType === "group"
+      ? callPayload.conversationName || "Group"
+      : callPayload.caller?.name || "Unknown caller";
+
+    const notification = new Notification(title, {
+      body,
+      tag: `wired-call-${callPayload.callId || callPayload.from || Date.now()}`,
+      requireInteraction: true,
+      silent: !preferences.sounds
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      setActiveSection("message");
+      notification.close();
+    };
+
+    callNotificationRef.current = notification;
+  };
+
+  const dequeueIncomingCall = () => {
+    setIncomingCallQueue((currentQueue) => {
+      if (currentQueue.length === 0) {
+        setIncomingCall(null);
+        return currentQueue;
+      }
+
+      const [nextCall, ...remaining] = currentQueue;
+      setIncomingCall(nextCall);
+      setCallStatus(`Incoming ${nextCall.callType} call`);
+      return remaining;
+    });
   };
 
   const upsertRemoteParticipant = (user) => {
@@ -235,6 +353,7 @@ function Chat() {
       peer.onicecandidate = null;
       peer.ontrack = null;
       peer.onconnectionstatechange = null;
+      peer.oniceconnectionstatechange = null;
       peer.close();
       peerConnectionsRef.current.delete(remoteUserId);
     }
@@ -330,13 +449,16 @@ function Chat() {
   };
 
   const getCallSocketPayload = () => ({
-    callType: activeCallRef.current?.type || incomingCall?.callType || "audio",
-    conversationType: activeCallRef.current?.conversationType || incomingCall?.conversationType || "direct",
+    callId: activeCallRef.current?.callId || incomingCallRef.current?.callId || null,
+    callType: activeCallRef.current?.type || incomingCallRef.current?.callType || "audio",
+    conversationType: activeCallRef.current?.conversationType || incomingCallRef.current?.conversationType || "direct",
     groupId:
       (activeCallRef.current?.conversationType === "group" && activeCallRef.current?.conversationId) ||
-      incomingCall?.groupId ||
+      incomingCallRef.current?.groupId ||
       null
   });
+
+  const createCallId = () => `${currentUser._id || "user"}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const resolveUserById = (userId) => {
     if (!userId) return null;
@@ -459,11 +581,22 @@ function Chat() {
       }
     };
 
+    peer.oniceconnectionstatechange = () => {
+      if (peer.iceConnectionState === "failed") {
+        peer.restartIce?.();
+      }
+    };
+
     peerConnectionsRef.current.set(remoteUser._id, peer);
     return peer;
   };
 
-  const handleIncomingSignal = async ({ from, description, candidate }) => {
+  const handleIncomingSignal = async ({ from, callId, description, candidate }) => {
+    const expectedCallId = activeCallRef.current?.callId || incomingCallRef.current?.callId;
+    if (callId && expectedCallId && callId !== expectedCallId) {
+      return;
+    }
+
     const remoteUser = resolveUserById(from);
     if (!remoteUser) return;
 
@@ -537,6 +670,14 @@ function Chat() {
   }, [activeCall]);
 
   useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+
+  useEffect(() => {
+    incomingCallQueueRef.current = incomingCallQueue;
+  }, [incomingCallQueue]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("wired_theme", theme);
   }, [theme]);
@@ -560,9 +701,31 @@ function Chat() {
   }, [preferences]);
 
   useEffect(() => {
+    if (!preferences.notifications || !preferences.desktopNotifications) return;
+    requestDesktopPermission();
+  }, [preferences.desktopNotifications, preferences.notifications]);
+
+  useEffect(() => {
     if (!activeCall) return;
     assignLocalPreview();
   }, [activeCall]);
+
+  useEffect(() => {
+    if (incomingCall) {
+      playIncomingTone();
+      showIncomingCallNotification(incomingCall);
+      return;
+    }
+
+    stopIncomingTone();
+    closeCallNotification();
+  }, [incomingCall, preferences.desktopNotifications, preferences.notifications, preferences.sounds]);
+
+  useEffect(() => () => {
+    stopIncomingTone();
+    closeCallNotification();
+    audioContextRef.current?.close?.();
+  }, []);
 
   useEffect(() => {
     refreshConversations();
@@ -661,24 +824,52 @@ function Chat() {
     });
 
     socketRef.current.on("call:incoming", (payload) => {
-      setIncomingCall({
+      const normalizedCall = {
         ...payload,
+        callId: payload.callId || `${payload.from}-${Date.now()}`,
         participants: payload.participants || [payload.caller].filter(Boolean)
-      });
-      setCallStatus(`Incoming ${payload.callType} call`);
+      };
+
+      if (activeCallRef.current) {
+        socketRef.current?.emit("call:rejected", {
+          toUserIds: normalizedCall.participants
+            .map((participant) => participant._id)
+            .filter((userId) => userId && userId !== currentUser._id),
+          conversationType: normalizedCall.conversationType,
+          groupId: normalizedCall.groupId || null,
+          callId: normalizedCall.callId,
+          reason: "busy"
+        });
+        return;
+      }
+
+      const alreadyQueued = incomingCallQueueRef.current.some((call) => call.callId === normalizedCall.callId);
+      if (incomingCallRef.current?.callId === normalizedCall.callId || alreadyQueued) {
+        return;
+      }
+
+      if (incomingCallRef.current) {
+        setIncomingCallQueue((currentQueue) => [...currentQueue, normalizedCall]);
+        showChatActionMessage("Another incoming call is waiting.");
+      } else {
+        setIncomingCall(normalizedCall);
+        setCallStatus(`Incoming ${normalizedCall.callType} call`);
+      }
+
       pushCallHistory({
-        callType: payload.callType,
-        peerName: payload.conversationType === "group"
-          ? payload.conversationName || "Group"
-          : payload.caller?.name || "Unknown caller",
+        callType: normalizedCall.callType,
+        peerName: normalizedCall.conversationType === "group"
+          ? normalizedCall.conversationName || "Group"
+          : normalizedCall.caller?.name || "Unknown caller",
         direction: "incoming",
         status: "ringing"
       });
     });
 
-    socketRef.current.on("call:participant-joined", async ({ participant }) => {
+    socketRef.current.on("call:participant-joined", async ({ callId, participant }) => {
       if (!participant?._id || participant._id === currentUser._id) return;
       if (!activeCallRef.current || !localStreamRef.current) return;
+      if (callId && activeCallRef.current.callId && callId !== activeCallRef.current.callId) return;
 
       const peer = createPeerConnection(participant);
       if (!peer) return;
@@ -703,23 +894,28 @@ function Chat() {
       }
     });
 
-    socketRef.current.on("call:rejected", ({ from }) => {
+    socketRef.current.on("call:rejected", ({ callId, from, reason }) => {
+      if (callId && activeCallRef.current?.callId && callId !== activeCallRef.current.callId) return;
+
       if (activeCallRef.current?.conversationType === "direct") {
-        showChatActionMessage("Your call was rejected.");
+        showChatActionMessage(reason === "busy" ? "User is busy on another call." : "Your call was rejected.");
         pushCallHistory({
           callType: activeCallRef.current.type,
           peerName: activeCallRef.current.conversationName,
           direction: "outgoing",
-          status: "rejected"
+          status: reason === "busy" ? "busy" : "rejected"
         });
         cleanupCall();
+        dequeueIncomingCall();
         return;
       }
 
       closePeerConnection(from);
     });
 
-    socketRef.current.on("call:ended", ({ from, conversationType }) => {
+    socketRef.current.on("call:ended", ({ callId, from, conversationType }) => {
+      if (callId && activeCallRef.current?.callId && callId !== activeCallRef.current.callId) return;
+
       if (conversationType === "group") {
         closePeerConnection(from);
         showChatActionMessage("A participant left the call.");
@@ -728,6 +924,7 @@ function Chat() {
 
       showChatActionMessage("Call ended.");
       cleanupCall();
+      dequeueIncomingCall();
     });
 
     return () => {
@@ -735,6 +932,8 @@ function Chat() {
       clearTimeout(typingTimeoutRef.current);
       clearTimeout(incomingTypingTimeoutRef.current);
       clearTimeout(statusTimeoutRef.current);
+      stopIncomingTone();
+      closeCallNotification();
       cleanupCall();
     };
   }, [currentUser._id, token]);
@@ -812,15 +1011,29 @@ function Chat() {
 
   const handleCreateGroup = async ({ name, memberIds }) => {
     try {
+      setIsCreatingGroup(true);
       const { data } = await groupApi.create({ name, memberIds });
       const nextGroup = mapGroupConversation(data);
       setFriendActionMessage(`Created ${data.name}`);
       await refreshConversations();
       setActiveConversation(nextGroup);
       setActiveSection("message");
+      return true;
     } catch (error) {
       setFriendActionMessage(getErrorMessage(error, "Could not create group"));
+      return false;
+    } finally {
+      setIsCreatingGroup(false);
     }
+  };
+
+  const handleOpenCreateGroupModal = () => {
+    setGroupModalOpen(true);
+  };
+
+  const handleCloseCreateGroupModal = () => {
+    if (isCreatingGroup) return;
+    setGroupModalOpen(false);
   };
 
   const handleSendFriendRequest = async (recipientId) => {
@@ -1092,6 +1305,7 @@ function Chat() {
       const participants = getConversationParticipants(activeConversation, currentUser._id);
 
       const nextCall = {
+        callId: createCallId(),
         type: callType,
         conversationType: activeConversation.type,
         conversationId: activeConversation.type === "group" ? activeConversation.groupId : activeConversation.user._id,
@@ -1111,6 +1325,7 @@ function Chat() {
       });
 
       socketRef.current?.emit("call:ring", {
+        callId: nextCall.callId,
         toUserIds: participantIds,
         caller: {
           _id: currentUser._id,
@@ -1162,14 +1377,16 @@ function Chat() {
     if (!incomingCall) return;
 
     try {
-      await attachLocalStream(incomingCall.callType);
+      const callToAccept = incomingCall;
+      await attachLocalStream(callToAccept.callType);
 
-      const participants = (incomingCall.participants || []).filter((participant) => participant._id !== currentUser._id);
+      const participants = (callToAccept.participants || []).filter((participant) => participant._id !== currentUser._id);
       const nextCall = {
-        type: incomingCall.callType,
-        conversationType: incomingCall.conversationType,
-        conversationId: incomingCall.groupId || incomingCall.caller?._id,
-        conversationName: incomingCall.conversationName || incomingCall.caller?.name || "Contact",
+        callId: callToAccept.callId || createCallId(),
+        type: callToAccept.callType,
+        conversationType: callToAccept.conversationType,
+        conversationId: callToAccept.groupId || callToAccept.caller?._id,
+        conversationName: callToAccept.conversationName || callToAccept.caller?.name || "Contact",
         participantIds: participants.map((participant) => participant._id),
         participants
       };
@@ -1179,13 +1396,21 @@ function Chat() {
       setIncomingCall(null);
       setCallStatus("Connecting...");
       pushCallHistory({
-        callType: incomingCall.callType,
+        callType: callToAccept.callType,
         peerName: nextCall.conversationName,
         direction: "incoming",
         status: "accepted"
       });
 
+      if (nextCall.conversationType === "direct") {
+        const matchingFriend = friends.find((friend) => friend.user._id === nextCall.conversationId);
+        if (matchingFriend) {
+          setActiveConversation({ ...matchingFriend, type: "direct" });
+        }
+      }
+
       socketRef.current?.emit("call:participant-joined", {
+        callId: nextCall.callId,
         toUserIds: participants.map((participant) => participant._id),
         participant: {
           _id: currentUser._id,
@@ -1193,12 +1418,13 @@ function Chat() {
           email: currentUser.email,
           profilePicture: currentUser.profilePicture || ""
         },
-        callType: incomingCall.callType,
-        conversationType: incomingCall.conversationType,
-        groupId: incomingCall.groupId || null
+        callType: callToAccept.callType,
+        conversationType: callToAccept.conversationType,
+        groupId: callToAccept.groupId || null
       });
     } catch {
       cleanupCall();
+      dequeueIncomingCall();
     }
   };
 
@@ -1217,11 +1443,14 @@ function Chat() {
     socketRef.current?.emit("call:rejected", {
       toUserIds: (incomingCall.participants || []).map((participant) => participant._id).filter((userId) => userId !== currentUser._id),
       conversationType: incomingCall.conversationType,
-      groupId: incomingCall.groupId || null
+      groupId: incomingCall.groupId || null,
+      callId: incomingCall.callId || null,
+      reason: "declined"
     });
 
     setIncomingCall(null);
     setCallStatus("");
+    dequeueIncomingCall();
   };
 
   const handleEndCall = () => {
@@ -1234,6 +1463,7 @@ function Chat() {
       });
 
       socketRef.current?.emit("call:ended", {
+        callId: activeCall.callId || null,
         toUserIds: activeCall.participantIds,
         conversationType: activeCall.conversationType,
         groupId: activeCall.conversationType === "group" ? activeCall.conversationId : null
@@ -1241,6 +1471,7 @@ function Chat() {
     }
 
     cleanupCall();
+    dequeueIncomingCall();
   };
 
   const handleToggleMute = () => {
@@ -1340,10 +1571,9 @@ function Chat() {
         <div className="workspace-single-view">
           <GroupsPanel
             groups={groups}
-            friends={friends}
             currentUserId={currentUser._id}
             archivedChatIds={archivedChatIds}
-            onCreateGroup={handleCreateGroup}
+            onOpenCreateGroup={handleOpenCreateGroupModal}
           />
         </div>
       );
@@ -1417,7 +1647,7 @@ function Chat() {
           onSearch={handleSearch}
           onSendFriendRequest={handleSendFriendRequest}
           onAcceptRequest={handleAcceptRequest}
-          onCreateGroup={handleCreateGroup}
+          onOpenCreateGroup={handleOpenCreateGroupModal}
           friendActionMessage={friendActionMessage}
           mobileListOpen={mobileListOpen}
           onToggleMobileList={() => setMobileListOpen((current) => !current)}
@@ -1486,7 +1716,20 @@ function Chat() {
         {renderWorkspace()}
       </div>
 
-      <IncomingCallModal call={incomingCall} onAccept={handleAcceptCall} onReject={handleRejectCall} />
+      <IncomingCallModal
+        call={incomingCall}
+        queuedCount={incomingCallQueue.length}
+        onAccept={handleAcceptCall}
+        onReject={handleRejectCall}
+      />
+
+      <CreateGroupModal
+        open={groupModalOpen}
+        onClose={handleCloseCreateGroupModal}
+        friends={friends}
+        onSubmit={handleCreateGroup}
+        isSubmitting={isCreatingGroup}
+      />
 
       <ContactProfileModal
         user={activeConversation?.type === "direct" ? activeConversation.user : null}

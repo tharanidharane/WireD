@@ -1,7 +1,7 @@
 import { Phone, PhoneOff, Video } from "lucide-react";
 import Avatar from "../Avatar";
 
-function IncomingCallModal({ call, onAccept, onReject }) {
+function IncomingCallModal({ call, queuedCount = 0, onAccept, onReject }) {
   if (!call) return null;
 
   const title = call.conversationType === "group"
@@ -21,6 +21,7 @@ function IncomingCallModal({ call, onAccept, onReject }) {
         <p className="eyebrow">Incoming {call.callType} call</p>
         <h2>{title}</h2>
         <p className="incoming-call-copy">{description}</p>
+        {queuedCount > 0 ? <p className="incoming-call-copy">{queuedCount} more call(s) waiting</p> : null}
 
         <div className="incoming-call-actions">
           <button type="button" className="call-action-button decline" onClick={onReject}>
