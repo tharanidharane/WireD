@@ -1634,7 +1634,6 @@ function Chat() {
           friends={friends.filter((friend) => !blockedChatIds.includes(friend.user._id))}
           groups={groups}
           requests={requests}
-          searchResults={searchResults}
           activeConversation={activeConversation}
           onlineUsers={onlineUsers}
           unreadCounts={unreadCounts}
@@ -1644,10 +1643,7 @@ function Chat() {
           archivedChatIds={archivedChatIds}
           onChangeFilter={setActiveFilter}
           onSelectConversation={handleSelectConversation}
-          onSearch={handleSearch}
-          onSendFriendRequest={handleSendFriendRequest}
           onAcceptRequest={handleAcceptRequest}
-          onOpenCreateGroup={handleOpenCreateGroupModal}
           friendActionMessage={friendActionMessage}
           mobileListOpen={mobileListOpen}
           onToggleMobileList={() => setMobileListOpen((current) => !current)}

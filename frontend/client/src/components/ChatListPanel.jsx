@@ -21,7 +21,6 @@ function ChatListPanel({
   friends,
   groups,
   requests,
-  searchResults,
   activeConversation,
   onlineUsers,
   unreadCounts,
@@ -31,10 +30,7 @@ function ChatListPanel({
   archivedChatIds,
   onChangeFilter,
   onSelectConversation,
-  onSearch,
-  onSendFriendRequest,
   onAcceptRequest,
-  onOpenCreateGroup,
   onOpenArchiveView,
   mobileListOpen,
   onToggleMobileList,
@@ -51,19 +47,22 @@ function ChatListPanel({
   const groupConversations = useMemo(() => groups.map((group) => ({ ...group, type: "group" })), [groups]);
 
   const visibleConversations = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
     const allConversations = [...directConversations, ...groupConversations];
     const scopedConversations = isArchiveView
       ? allConversations.filter((conversation) => archivedChatIds.includes(getArchiveId(conversation)))
       : allConversations.filter((conversation) => !archivedChatIds.includes(getArchiveId(conversation)));
 
+    let filteredConversations = scopedConversations;
+
     if (activeFilter === "unread") {
-      return scopedConversations.filter(
+      filteredConversations = filteredConversations.filter(
         (conversation) => (unreadCounts[getArchiveId(conversation)] || 0) > 0
       );
     }
 
     if (activeFilter === "favorites") {
-      return scopedConversations.filter(
+      filteredConversations = filteredConversations.filter(
         (conversation) =>
           (conversation.type === "group"
             ? conversation.members?.some((member) => onlineUsers.includes(member._id))
@@ -72,16 +71,30 @@ function ChatListPanel({
       );
     }
 
-    return scopedConversations.sort((left, right) => {
+    const sortedConversations = filteredConversations.sort((left, right) => {
       const leftTime = new Date(left.lastMessage?.timestamp || left.updatedAt || 0).getTime();
       const rightTime = new Date(right.lastMessage?.timestamp || right.updatedAt || 0).getTime();
       return rightTime - leftTime;
     });
-  }, [activeFilter, archivedChatIds, directConversations, groupConversations, isArchiveView, onlineUsers, unreadCounts]);
+
+    if (!normalizedQuery) {
+      return sortedConversations;
+    }
+
+    return sortedConversations.filter((conversation) => {
+      const name = conversation.user?.name || "";
+      const preview = getPreviewText(conversation) || "";
+      const messageText = conversation.lastMessage?.messageText || "";
+      const memberNames = conversation.type === "group"
+        ? (conversation.members || []).map((member) => member.name).join(" ")
+        : "";
+
+      return `${name} ${preview} ${messageText} ${memberNames}`.toLowerCase().includes(normalizedQuery);
+    });
+  }, [activeFilter, archivedChatIds, directConversations, groupConversations, isArchiveView, onlineUsers, query, unreadCounts]);
 
   const handleSearch = (value) => {
     setQuery(value);
-    onSearch(value);
   };
 
   useEffect(() => {
@@ -97,9 +110,6 @@ function ChatListPanel({
           <div className="chat-list-title-block">
             <h2>Messages</h2>
           </div>
-          <button type="button" className="mini-accent-button" onClick={onOpenCreateGroup}>
-            Create Group
-          </button>
         </div>
 
         <div className="chat-list-header">
@@ -143,32 +153,6 @@ function ChatListPanel({
                 {filter.count ? <em>{filter.count}</em> : null}
               </button>
             ))}
-          </div>
-        )}
-
-        {query.trim() && (
-          <div className="chat-list-scroll search-mode">
-            {searchResults.length === 0 ? (
-              <div className="empty-panel">
-                <strong>No matching users</strong>
-                <p>People who are already your friends are not shown here.</p>
-              </div>
-            ) : (
-              searchResults.map((result) => (
-                <div key={result._id} className="search-result-card">
-                  <div className="search-result-main">
-                    <Avatar user={result} className="chat-list-avatar" />
-                    <div className="search-result-copy">
-                      <strong>{result.name}</strong>
-                      <p>{result.email}</p>
-                    </div>
-                  </div>
-                  <button type="button" className="mini-accent-button" onClick={() => onSendFriendRequest(result._id)}>
-                    Add
-                  </button>
-                </div>
-              ))
-            )}
           </div>
         )}
 
