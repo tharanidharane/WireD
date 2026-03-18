@@ -1,4 +1,5 @@
 import { Phone, Video } from "lucide-react";
+import { useState } from "react";
 
 const formatCallTime = (time) => {
   if (!time) return "";
@@ -12,15 +13,40 @@ const formatCallTime = (time) => {
   });
 };
 
-const getStatusLabel = (status) => {
-  if (status === "rejected" || status === "missed") return "Missed";
-  if (status === "accepted" || status === "started") return "Incoming";
-  if (status === "ended") return "Outgoing";
-  return "Incoming";
+const getCallCategory = (entry) => {
+  if (entry.status === "rejected" || entry.status === "missed" || entry.status === "busy") {
+    return "missed";
+  }
+  if (entry.direction === "incoming") {
+    return "incoming";
+  }
+  if (entry.direction === "outgoing") {
+    return "outgoing";
+  }
+  return "all";
+};
+
+const getCategoryLabel = (entry) => {
+  const category = getCallCategory(entry);
+  if (category === "missed") return "Missed";
+  if (category === "incoming") return "Incoming";
+  if (category === "outgoing") return "Outgoing";
+  return "Call";
 };
 
 function HomePanel({ callHistory = [] }) {
-  const rows = callHistory;
+  const [activeFilter, setActiveFilter] = useState("all");
+
+  const filters = [
+    { key: "all", label: "All Calls" },
+    { key: "missed", label: "Missed" },
+    { key: "incoming", label: "Incoming" },
+    { key: "outgoing", label: "Outgoing" }
+  ];
+
+  const filteredRows = activeFilter === "all"
+    ? callHistory
+    : callHistory.filter((entry) => getCallCategory(entry) === activeFilter);
 
   return (
     <section className="workspace-panel calls-panel">
@@ -30,10 +56,16 @@ function HomePanel({ callHistory = [] }) {
       </div>
 
       <div className="tabs-strip">
-        <button type="button" className="tab-link active">All Calls</button>
-        <button type="button" className="tab-link">Missed</button>
-        <button type="button" className="tab-link">Incoming</button>
-        <button type="button" className="tab-link">Outgoing</button>
+        {filters.map((filter) => (
+          <button
+            key={filter.key}
+            type="button"
+            className={`tab-link ${activeFilter === filter.key ? "active" : ""}`}
+            onClick={() => setActiveFilter(filter.key)}
+          >
+            {filter.label}
+          </button>
+        ))}
       </div>
 
       <div className="calls-table-wrap">
@@ -48,12 +80,12 @@ function HomePanel({ callHistory = [] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <tr>
                 <td colSpan={5}>No call records yet.</td>
               </tr>
-            ) : rows.map((entry) => {
-              const statusLabel = getStatusLabel(entry.status);
+            ) : filteredRows.map((entry) => {
+              const categoryLabel = getCategoryLabel(entry);
               return (
                 <tr key={entry.id}>
                   <td className="contact-name">{entry.peerName}</td>
@@ -62,10 +94,10 @@ function HomePanel({ callHistory = [] }) {
                     {entry.callType === "video" ? "Video Call" : "Audio Call"}
                   </td>
                   <td>
-                    <span className={`status-pill ${statusLabel.toLowerCase()}`}>{statusLabel}</span>
+                    <span className={`status-pill ${getCallCategory(entry)}`}>{categoryLabel}</span>
                   </td>
                   <td>{formatCallTime(entry.timestamp)}</td>
-                  <td className="action-link">{statusLabel === "Missed" ? "Redial" : "Details"}</td>
+                  <td className="action-link">{categoryLabel === "Missed" ? "Redial" : "Details"}</td>
                 </tr>
               );
             })}

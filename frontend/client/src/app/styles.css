@@ -127,11 +127,15 @@ video {
 .auth-shell {
   display: grid;
   place-items: center;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 100vh;
 }
 
 .auth-card {
   width: min(1180px, 100%);
-  min-height: 760px;
+  min-height: min(760px, 90vh);
+  max-height: 95vh;
   display: grid;
   grid-template-columns: 1.08fr 0.92fr;
   background: rgba(255, 255, 255, 0.78);
@@ -2263,6 +2267,36 @@ video {
   .auth-card,
   .call-stage-shell {
     grid-template-columns: 1fr;
+    min-height: auto;
+    max-height: none;
+    border-radius: 32px;
+  }
+
+  .brand-block {
+    padding: 48px 40px 32px;
+  }
+
+  .auth-form {
+    padding: 32px 40px 24px;
+  }
+
+  .auth-switch {
+    padding: 0 40px 32px;
+  }
+
+  .auth-showcase {
+    flex-direction: column;
+    gap: 18px;
+    margin-top: 24px;
+  }
+
+  .orbit-card {
+    width: 140px;
+    height: 140px;
+  }
+
+  .auth-caption {
+    text-align: center;
   }
 
   .call-stage-shell {
@@ -2379,17 +2413,106 @@ video {
 }
 
 @media (max-width: 640px) {
+  .auth-shell {
+    padding: 10px;
+  }
+
   .auth-card {
     min-height: auto;
+    border-radius: 24px;
+    border: 2px solid #202022;
   }
 
   .brand-block,
   .auth-form {
-    padding: 34px 24px;
+    padding: 28px 20px;
+  }
+
+  .brand-block h1 {
+    font-size: 1.8rem;
+    line-height: 1.3;
+  }
+
+  .brand-block span {
+    font-size: 0.9rem;
+  }
+
+  .auth-showcase {
+    display: none;
   }
 
   .auth-switch {
-    padding: 0 24px 28px;
+    padding: 0 20px 24px;
+    font-size: 0.9rem;
+  }
+
+  .auth-form input {
+    padding: 14px 16px;
+    font-size: 0.95rem;
+  }
+
+  .auth-form button {
+    padding: 14px 16px;
+  }
+
+  .workspace-panel {
+    padding: 12px;
+  }
+
+  .section-headline h1 {
+    font-size: 18px;
+  }
+
+  .section-headline p {
+    font-size: 0.85rem;
+  }
+
+  .calls-table th,
+  .calls-table td {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  .tabs-strip {
+    gap: 8px;
+  }
+
+  .tab-link {
+    font-size: 0.85rem;
+    min-height: 34px;
+  }
+
+  .pagination-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pagination-row button {
+    min-width: 36px;
+    padding: 6px 10px;
+  }
+
+  .modal-overlay {
+    padding: 16px;
+  }
+
+  .contact-profile-modal,
+  .create-group-modal {
+    width: calc(100vw - 24px);
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .incoming-call-card {
+    width: calc(100vw - 24px);
+    padding: 28px 20px;
+    border-radius: 28px;
+  }
+
+  .call-action-button {
+    min-width: 130px;
+    min-height: 48px;
+    font-size: 0.9rem;
   }
 
   .chat-surface {
@@ -2473,6 +2596,116 @@ video {
 
   .call-controls {
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-shell {
+    padding: 5px;
+  }
+
+  .auth-card {
+    border-radius: 20px;
+    border: 1px solid #202022;
+  }
+
+  .brand-block,
+  .auth-form {
+    padding: 24px 16px;
+  }
+
+  .brand-block h1 {
+    font-size: 1.6rem;
+  }
+
+  .eyebrow {
+    font-size: 0.85rem;
+  }
+
+  .auth-form input,
+  .auth-form button {
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    border-radius: 14px;
+  }
+
+  .auth-switch {
+    padding: 0 16px 20px;
+    font-size: 0.85rem;
+  }
+
+  .workspace-panel {
+    padding: 10px;
+  }
+
+  .section-headline h1 {
+    font-size: 16px;
+  }
+
+  .section-headline p {
+    font-size: 0.8rem;
+  }
+
+  .calls-table {
+    min-width: 500px;
+  }
+
+  .calls-table th,
+  .calls-table td {
+    padding: 8px 6px;
+    font-size: 11px;
+  }
+
+  .tabs-strip {
+    gap: 6px;
+  }
+
+  .tab-link {
+    font-size: 0.8rem;
+    min-height: 32px;
+  }
+
+  .pagination-row button {
+    min-width: 32px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+  }
+
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .contact-profile-modal,
+  .create-group-modal {
+    width: calc(100vw - 16px);
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .incoming-call-card {
+    width: calc(100vw - 16px);
+    padding: 24px 16px;
+    border-radius: 24px;
+    border: 2px solid #202022;
+  }
+
+  .incoming-call-card h2 {
+    font-size: 1.4rem;
+  }
+
+  .call-action-button {
+    min-width: 120px;
+    min-height: 44px;
+    font-size: 0.85rem;
+  }
+
+  .incoming-call-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .call-action-button {
+    width: 100%;
   }
 }
 
@@ -3559,8 +3792,66 @@ body::before {
 }
 
 @media (max-width: 780px) {
+  .auth-card {
+    border-radius: 28px;
+  }
+
+  .brand-block {
+    padding: 36px 28px;
+  }
+
+  .auth-form {
+    padding: 28px 28px 20px;
+  }
+
+  .auth-switch {
+    padding: 0 28px 28px;
+  }
+
+  .orbit-card {
+    width: 120px;
+    height: 120px;
+  }
+
   .groups-grid {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-panel {
+    padding: 16px;
+  }
+
+  .section-headline h1 {
+    font-size: 20px;
+  }
+
+  .section-headline p {
+    font-size: 0.9rem;
+  }
+
+  .calls-table-wrap {
+    overflow-x: auto;
+  }
+
+  .calls-table {
+    min-width: 600px;
+  }
+
+  .calls-table th,
+  .calls-table td {
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+
+  .tabs-strip {
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-link {
+    white-space: nowrap;
+    font-size: 0.9rem;
   }
 
   .profile-edit-grid {
