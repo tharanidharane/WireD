@@ -7,15 +7,16 @@ const groupTabs = [
   { key: "requested", label: "Requested" }
 ];
 
-function GroupsPanel({ groups = [], currentUserId, archivedChatIds = [] }) {
+function GroupsPanel({ groups = [], friends = [], currentUserId, archivedChatIds = [], onCreateGroup }) {
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [isCreating, setIsCreating] = useState(false);
 
   const archivedGroupIds = useMemo(() => new Set(archivedChatIds), [archivedChatIds]);
 
   const groupedData = useMemo(() => {
-    const archived = groups.filter((group) => archivedGroupIds.has(group._id));
-    const active = groups.filter((group) => !archivedGroupIds.has(group._id));
+    const archived = groups.filter((group) => archivedGroupIds.has(group.groupId || group._id));
+    const active = groups.filter((group) => !archivedGroupIds.has(group.groupId || group._id));
     const requested = groups.filter(
       (group) => group.creator?._id === currentUserId && !group.lastMessage
     );
@@ -49,6 +50,41 @@ function GroupsPanel({ groups = [], currentUserId, archivedChatIds = [] }) {
     requested: "No requested groups"
   };
 
+  const handleCreateGroup = async () => {
+    const candidates = (friends || []).map((friend) => friend.user).filter(Boolean);
+    if (candidates.length === 0) {
+      window.alert("Add at least one friend before creating a group.");
+      return;
+    }
+
+    const groupName = window.prompt("Enter a group name:");
+    if (!groupName || !groupName.trim()) return;
+
+    const options = candidates.map((user, index) => `${index + 1}. ${user.name}`).join("\n");
+    const selected = window.prompt(`Choose members by number (comma-separated):\n${options}`);
+    if (!selected) return;
+
+    const selectedIndexes = [...new Set(
+      selected
+        .split(",")
+        .map((value) => Number.parseInt(value.trim(), 10) - 1)
+        .filter((value) => Number.isInteger(value) && value >= 0 && value < candidates.length)
+    )];
+
+    const memberIds = selectedIndexes.map((index) => candidates[index]._id);
+    if (memberIds.length === 0) {
+      window.alert("Select at least one valid member.");
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      await onCreateGroup?.({ name: groupName.trim(), memberIds });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <section className="workspace-panel groups-panel-page">
       <div className="panel-toolbar with-search">
@@ -65,7 +101,9 @@ function GroupsPanel({ groups = [], currentUserId, archivedChatIds = [] }) {
           <h1>Organization Groups</h1>
           <p>Collaborate and manage team permissions across your organization.</p>
         </div>
-        <button type="button" className="primary-action">Create Group</button>
+        <button type="button" className="primary-action" onClick={handleCreateGroup} disabled={isCreating}>
+          {isCreating ? "Creating..." : "Create Group"}
+        </button>
       </div>
 
       <div className="tabs-strip">
@@ -97,13 +135,13 @@ function GroupsPanel({ groups = [], currentUserId, archivedChatIds = [] }) {
               <p>{group.members?.length || 0} members</p>
               <div className="group-card-meta">
                 <span>
-                  {archivedGroupIds.has(group._id)
+                  {archivedGroupIds.has(group.groupId || group._id)
                     ? "Archived"
                     : group.lastMessage
                       ? "Active now"
                       : "Awaiting activity"}
                 </span>
-                <strong>{archivedGroupIds.has(group._id) ? "ARCHIVED" : activeTab === "requested" ? "REQUESTED" : "ACTIVE"}</strong>
+                <strong>{archivedGroupIds.has(group.groupId || group._id) ? "ARCHIVED" : activeTab === "requested" ? "REQUESTED" : "ACTIVE"}</strong>
               </div>
             </div>
           </article>

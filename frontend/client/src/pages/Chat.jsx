@@ -45,7 +45,14 @@ const mapGroupConversation = (group) => ({
   }
 });
 
-const getConversationId = (conversation) => conversation?.user?._id || "";
+const getConversationId = (conversation) => {
+  if (!conversation) return "";
+  if (conversation.type === "group") {
+    return conversation.groupId || conversation._id || conversation.user?._id || "";
+  }
+
+  return conversation.user?._id || "";
+};
 const getConversationKey = (conversation) => `${conversation?.type || "direct"}:${getConversationId(conversation)}`;
 const DEFAULT_PREFERENCES = {
   notifications: true,
@@ -97,6 +104,7 @@ function Chat() {
   const remoteStreamsRef = useRef(new Map());
   const remoteVideoElementsRef = useRef(new Map());
   const pendingCandidatesRef = useRef(new Map());
+  const disconnectTimersRef = useRef(new Map());
   const activeCallRef = useRef(null);
 
   const [friends, setFriends] = useState([]);
@@ -216,6 +224,12 @@ function Chat() {
   };
 
   const closePeerConnection = (remoteUserId) => {
+    const disconnectTimer = disconnectTimersRef.current.get(remoteUserId);
+    if (disconnectTimer) {
+      clearTimeout(disconnectTimer);
+      disconnectTimersRef.current.delete(remoteUserId);
+    }
+
     const peer = peerConnectionsRef.current.get(remoteUserId);
     if (peer) {
       peer.onicecandidate = null;
@@ -241,6 +255,8 @@ function Chat() {
     });
 
     peerConnectionsRef.current.clear();
+    disconnectTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+    disconnectTimersRef.current.clear();
 
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -294,8 +310,18 @@ function Chat() {
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      },
       video: callType === "video"
+        ? {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30, max: 30 }
+          }
+        : false
     });
 
     localStreamRef.current = stream;
@@ -395,6 +421,10 @@ function Chat() {
       const targetElement = remoteVideoElementsRef.current.get(remoteUser._id);
       if (targetElement) {
         targetElement.srcObject = remoteStream;
+        const maybePromise = targetElement.play?.();
+        if (maybePromise && typeof maybePromise.catch === "function") {
+          maybePromise.catch(() => {});
+        }
       }
 
       setCallStatus("Connected");
@@ -402,6 +432,11 @@ function Chat() {
 
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === "connected") {
+        const disconnectTimer = disconnectTimersRef.current.get(remoteUser._id);
+        if (disconnectTimer) {
+          clearTimeout(disconnectTimer);
+          disconnectTimersRef.current.delete(remoteUser._id);
+        }
         setCallStatus("Connected");
       }
 
@@ -410,9 +445,16 @@ function Chat() {
       }
 
       if (peer.connectionState === "disconnected") {
-        closePeerConnection(remoteUser._id);
-        if (peerConnectionsRef.current.size === 0 && activeCallRef.current?.conversationType === "direct") {
-          cleanupCall();
+        setCallStatus("Reconnecting...");
+        if (!disconnectTimersRef.current.has(remoteUser._id)) {
+          const timer = setTimeout(() => {
+            closePeerConnection(remoteUser._id);
+            if (peerConnectionsRef.current.size === 0 && activeCallRef.current?.conversationType === "direct") {
+              cleanupCall();
+            }
+          }, 8000);
+
+          disconnectTimersRef.current.set(remoteUser._id, timer);
         }
       }
     };
@@ -1296,7 +1338,13 @@ function Chat() {
     if (activeSection === "groups") {
       return (
         <div className="workspace-single-view">
-          <GroupsPanel groups={groups} currentUserId={currentUser._id} archivedChatIds={archivedChatIds} />
+          <GroupsPanel
+            groups={groups}
+            friends={friends}
+            currentUserId={currentUser._id}
+            archivedChatIds={archivedChatIds}
+            onCreateGroup={handleCreateGroup}
+          />
         </div>
       );
     }
@@ -1374,7 +1422,7 @@ function Chat() {
           mobileListOpen={mobileListOpen}
           onToggleMobileList={() => setMobileListOpen((current) => !current)}
           onFocusSearch={searchFocusRef}
-          onOpenArchiveView={() => setActiveSection("archive")}
+          onOpenArchiveView={() => setActiveSection((current) => (current === "archive" ? "message" : "archive"))}
         />
 
         <main className="chat-room-shell">

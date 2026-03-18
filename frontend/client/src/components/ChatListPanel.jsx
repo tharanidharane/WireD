@@ -7,6 +7,15 @@ import { getMessagePreviewLabel, getMessageKind } from "../utils/messageType";
 const getPreviewText = (friend) =>
   friend?.lastMessage ? getMessagePreviewLabel(friend.lastMessage) : "Start a conversation";
 
+const getArchiveId = (conversation) => {
+  if (!conversation) return "";
+  if (conversation.type === "group") {
+    return conversation.groupId || conversation._id || conversation.user?._id || "";
+  }
+
+  return conversation.user?._id || "";
+};
+
 function ChatListPanel({
   currentUser,
   friends,
@@ -26,6 +35,7 @@ function ChatListPanel({
   onSendFriendRequest,
   onAcceptRequest,
   onCreateGroup,
+  onOpenArchiveView,
   mobileListOpen,
   onToggleMobileList,
   onFocusSearch
@@ -43,12 +53,12 @@ function ChatListPanel({
   const visibleConversations = useMemo(() => {
     const allConversations = [...directConversations, ...groupConversations];
     const scopedConversations = isArchiveView
-      ? allConversations.filter((conversation) => archivedChatIds.includes(conversation.user._id))
-      : allConversations.filter((conversation) => !archivedChatIds.includes(conversation.user._id));
+      ? allConversations.filter((conversation) => archivedChatIds.includes(getArchiveId(conversation)))
+      : allConversations.filter((conversation) => !archivedChatIds.includes(getArchiveId(conversation)));
 
     if (activeFilter === "unread") {
       return scopedConversations.filter(
-        (conversation) => (unreadCounts[conversation.user._id] || 0) > 0
+        (conversation) => (unreadCounts[getArchiveId(conversation)] || 0) > 0
       );
     }
 
@@ -74,6 +84,41 @@ function ChatListPanel({
     onSearch(value);
   };
 
+  const handleCreateGroup = async () => {
+    const options = directConversations
+      .map((friend, index) => `${index + 1}. ${friend.user.name}`)
+      .join("\n");
+
+    if (!options) {
+      window.alert("Add at least one friend before creating a group.");
+      return;
+    }
+
+    const name = window.prompt("Enter a group name:");
+    if (!name || !name.trim()) return;
+
+    const selected = window.prompt(
+      `Choose members by number (comma-separated):\n${options}`
+    );
+
+    if (!selected) return;
+
+    const indexes = [...new Set(
+      selected
+        .split(",")
+        .map((value) => Number.parseInt(value.trim(), 10) - 1)
+        .filter((value) => Number.isInteger(value) && value >= 0 && value < directConversations.length)
+    )];
+
+    const memberIds = indexes.map((index) => directConversations[index].user._id);
+    if (memberIds.length === 0) {
+      window.alert("Select at least one valid member.");
+      return;
+    }
+
+    await onCreateGroup?.({ name: name.trim(), memberIds });
+  };
+
   useEffect(() => {
     if (onFocusSearch) {
       onFocusSearch.current = () => searchInputRef.current?.focus();
@@ -87,6 +132,19 @@ function ChatListPanel({
           <div className="chat-list-title-block">
             <h2>Messages</h2>
           </div>
+          <button type="button" className="mini-accent-button" onClick={handleCreateGroup}>
+            Create Group
+          </button>
+        </div>
+
+        <div className="chat-list-header">
+          <button
+            type="button"
+            className="chat-filter-chip"
+            onClick={onOpenArchiveView}
+          >
+            {isArchiveView ? "Back to chats" : `Archived (${archivedCount})`}
+          </button>
         </div>
 
         <label className="chat-search">
@@ -181,13 +239,13 @@ function ChatListPanel({
             ) : (
               visibleConversations.map((conversation) => (
                 <ChatItem
-                  key={`${conversation.type}-${conversation.user._id}`}
+                  key={`${conversation.type}-${getArchiveId(conversation)}`}
                   title={conversation.user.name}
                   subtitle={getPreviewText(conversation)}
                   time={conversation.lastMessage?.timestamp}
-                  badge={unreadCounts[conversation.user._id]}
+                  badge={unreadCounts[getArchiveId(conversation)]}
                   avatarUser={conversation.user}
-                  active={activeConversation?.type === conversation.type && activeConversation?.user._id === conversation.user._id}
+                  active={activeConversation?.type === conversation.type && getArchiveId(activeConversation) === getArchiveId(conversation)}
                   isOnline={conversation.type === "group"
                     ? conversation.members?.some((member) => onlineUsers.includes(member._id))
                     : onlineUsers.includes(conversation.user._id)}
