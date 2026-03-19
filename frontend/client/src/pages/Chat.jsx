@@ -826,10 +826,14 @@ function Chat() {
     });
 
     socketRef.current.on("call:incoming", (payload) => {
+      const normalizedParticipants = Array.isArray(payload.participants) && payload.participants.length > 0
+        ? payload.participants
+        : [payload.caller].filter(Boolean);
+
       const normalizedCall = {
         ...payload,
         callId: payload.callId || `${payload.from}-${Date.now()}`,
-        participants: payload.participants || [payload.caller].filter(Boolean)
+        participants: normalizedParticipants
       };
 
       if (activeCallRef.current) {
@@ -1401,14 +1405,20 @@ function Chat() {
       const callToAccept = incomingCall;
       await attachLocalStream(callToAccept.callType);
 
-      const participants = (callToAccept.participants || []).filter((participant) => participant._id !== currentUser._id);
+      const fallbackParticipants = Array.isArray(callToAccept.participants) && callToAccept.participants.length > 0
+        ? callToAccept.participants
+        : [callToAccept.caller].filter(Boolean);
+      const participants = fallbackParticipants.filter((participant) => participant?._id !== currentUser._id);
+      const participantIds = participants
+        .map((participant) => participant?._id)
+        .filter(Boolean);
       const nextCall = {
         callId: callToAccept.callId || createCallId(),
         type: callToAccept.callType,
         conversationType: callToAccept.conversationType,
         conversationId: callToAccept.groupId || callToAccept.caller?._id,
         conversationName: callToAccept.conversationName || callToAccept.caller?.name || "Contact",
-        participantIds: participants.map((participant) => participant._id),
+        participantIds,
         participants
       };
 
@@ -1432,7 +1442,7 @@ function Chat() {
 
       socketRef.current?.emit("call:participant-joined", {
         callId: nextCall.callId,
-        toUserIds: participants.map((participant) => participant._id),
+        toUserIds: participantIds,
         participant: {
           _id: currentUser._id,
           name: currentUser.name,
