@@ -1005,8 +1005,13 @@ function Chat() {
       return;
     }
 
-    const { data } = await friendApi.search(email);
-    setSearchResults(data);
+    try {
+      const { data } = await friendApi.search(email);
+      setSearchResults(data);
+    } catch (error) {
+      setSearchResults([]);
+      setFriendActionMessage(getErrorMessage(error, "Could not search users"));
+    }
   };
 
   const handleCreateGroup = async ({ name, memberIds }) => {
@@ -1648,6 +1653,7 @@ function Chat() {
           friends={friends.filter((friend) => !blockedChatIds.includes(friend.user._id))}
           groups={groups}
           requests={requests}
+          searchResults={searchResults}
           activeConversation={activeConversation}
           onlineUsers={onlineUsers}
           unreadCounts={unreadCounts}
@@ -1658,6 +1664,8 @@ function Chat() {
           onChangeFilter={setActiveFilter}
           onSelectConversation={handleSelectConversation}
           onAcceptRequest={handleAcceptRequest}
+          onSearchUsers={handleSearch}
+          onSendFriendRequest={handleSendFriendRequest}
           friendActionMessage={friendActionMessage}
           mobileListOpen={mobileListOpen}
           onToggleMobileList={() => setMobileListOpen((current) => !current)}
@@ -1679,6 +1687,9 @@ function Chat() {
               onStartAudioCall={handleAudioCallAction}
               onStartVideoCall={handleVideoCallAction}
               disableCallActions={!activeConversation || !!incomingCall}
+              callStatus={callStatus}
+              isInCall={Boolean(activeCall)}
+              activeCallType={activeCall?.type || "audio"}
               onToggleArchive={handleToggleArchive}
               onClearChat={handleClearChat}
               onDeleteChat={handleDeleteChat}

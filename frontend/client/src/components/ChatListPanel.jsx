@@ -21,6 +21,7 @@ function ChatListPanel({
   friends,
   groups,
   requests,
+  searchResults = [],
   activeConversation,
   onlineUsers,
   unreadCounts,
@@ -31,6 +32,9 @@ function ChatListPanel({
   onChangeFilter,
   onSelectConversation,
   onAcceptRequest,
+  onSearchUsers,
+  onSendFriendRequest,
+  friendActionMessage,
   onOpenArchiveView,
   mobileListOpen,
   onToggleMobileList,
@@ -95,6 +99,7 @@ function ChatListPanel({
 
   const handleSearch = (value) => {
     setQuery(value);
+    onSearchUsers?.(value);
   };
 
   useEffect(() => {
@@ -128,9 +133,41 @@ function ChatListPanel({
             ref={searchInputRef}
             value={query}
             onChange={(event) => handleSearch(event.target.value)}
-            placeholder="Search conversations..."
+            placeholder="Search conversations or users..."
           />
         </label>
+
+        {friendActionMessage ? <p className="panel-status">{friendActionMessage}</p> : null}
+
+        {query.trim() && (
+          <div className="request-strip-list">
+            {searchResults.length === 0 ? (
+              <div className="empty-panel">
+                <strong>No matching users</strong>
+                <p>Try a different name or email.</p>
+              </div>
+            ) : (
+              searchResults.map((result) => (
+                <div key={result._id} className="search-result-card">
+                  <div className="search-result-main">
+                    <Avatar user={result} className="tiny" />
+                    <div className="search-result-copy">
+                      <strong>{result.name}</strong>
+                      <p>{result.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="mini-accent-button"
+                    onClick={() => onSendFriendRequest?.(result._id)}
+                  >
+                    Add
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {!isArchiveView && (
           <div className="chat-filter-row">

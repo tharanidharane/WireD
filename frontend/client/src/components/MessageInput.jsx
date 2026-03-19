@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Plus, SendHorizontal, Smile } from "lucide-react";
+import { Mic, Plus, SendHorizontal, Smile, Square } from "lucide-react";
 
 const EMOJI_OPTIONS = ["😀", "😂", "😍", "👍", "🔥", "🎉", "🙏", "💬", "😎", "❤️"];
 
@@ -226,6 +226,16 @@ const MessageInput = forwardRef(function MessageInput(
               aria-label="Add emoji"
             >
               <Smile size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleRecording}
+              className={`composer-tool ${isRecording ? "recording" : ""}`}
+              disabled={disabled}
+              aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
+              title={isRecording ? "Stop recording" : "Record voice message"}
+            >
+              {isRecording ? <Square size={16} /> : <Mic size={18} />}
             </button>
             <button type="submit" className="composer-send" disabled={disabled} aria-label="Send message">
               <SendHorizontal size={18} />

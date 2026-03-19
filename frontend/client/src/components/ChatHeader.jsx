@@ -1,4 +1,4 @@
-import { MoreVertical, Phone, Video } from "lucide-react";
+import { Mic, MoreVertical, Phone, Video } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "./Avatar";
 
@@ -14,6 +14,9 @@ function ChatHeader({
   onStartAudioCall,
   onStartVideoCall,
   disableCallActions,
+  callStatus = "",
+  isInCall = false,
+  activeCallType = "audio",
   onToggleArchive,
   onClearChat,
   onDeleteChat,
@@ -58,24 +61,51 @@ function ChatHeader({
       </div>
 
       <div className="chat-room-meta">
+        <div className="chat-call-actions" role="group" aria-label="Call actions">
+          <button
+            type="button"
+            className="chat-call-button voice"
+            onClick={onStartAudioCall}
+            disabled={disableCallActions}
+            aria-label="Start voice chat"
+            title="Voice chat"
+          >
+            <Mic size={16} />
+            <span>Voice</span>
+          </button>
+
         <button
           type="button"
-          className="panel-icon"
+          className="panel-icon chat-call-icon"
           onClick={onStartAudioCall}
           disabled={disableCallActions}
           aria-label="Toggle audio call"
+          title="Audio call"
         >
           <Phone size={18} />
         </button>
         <button
           type="button"
-          className="panel-icon"
+          className="panel-icon chat-call-icon"
           onClick={onStartVideoCall}
           disabled={disableCallActions}
           aria-label="Toggle video call"
+          title="Video call"
         >
           <Video size={18} />
         </button>
+        </div>
+
+        {(isInCall || callStatus) && (
+          <div className={`chat-call-status ${isInCall ? "active" : ""}`}>
+            <span className="chat-call-status-dot" aria-hidden="true" />
+            <span>
+              {isInCall
+                ? `${activeCallType === "video" ? "Video" : "Voice"} chat live`
+                : callStatus}
+            </span>
+          </div>
+        )}
 
         <div className="chat-header-menu" ref={menuRef}>
           <button

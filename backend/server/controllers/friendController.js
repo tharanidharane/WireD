@@ -49,6 +49,9 @@ export const searchUsersByEmail = async (req, res) => {
       return res.json([]);
     }
 
+    const escapedQuery = email.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const searchPattern = new RegExp(escapedQuery, "i");
+
     const existingFriendships = await Friend.find({
       $or: [{ requester: req.user._id }, { recipient: req.user._id }]
     }).select("requester recipient");
@@ -60,7 +63,7 @@ export const searchUsersByEmail = async (req, res) => {
     });
 
     const users = await User.find({
-      email: { $regex: email.trim(), $options: "i" },
+      $or: [{ email: searchPattern }, { name: searchPattern }],
       _id: { $nin: Array.from(excludedUserIds) }
     }).select("_id name email profilePicture createdAt");
 

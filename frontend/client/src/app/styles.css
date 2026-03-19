@@ -1027,6 +1027,84 @@ video {
   flex-shrink: 0;
 }
 
+.chat-call-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(118, 120, 237, 0.06), rgba(255, 255, 255, 0.85));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.chat-call-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #202022;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.chat-call-button.voice {
+  background: linear-gradient(135deg, rgba(118, 120, 237, 0.16), rgba(118, 120, 237, 0.08));
+  border-color: rgba(118, 120, 237, 0.24);
+}
+
+.chat-call-button:hover,
+.chat-call-icon:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-call-icon {
+  width: 38px;
+  height: 36px;
+  border-radius: 12px;
+}
+
+.chat-call-status {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 120, 237, 0.2);
+  background: rgba(118, 120, 237, 0.1);
+  color: #2f3272;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+}
+
+.chat-call-status span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-call-status.active {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.34);
+  color: #166534;
+}
+
+.chat-call-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: callPulse 1.3s infinite ease-in-out;
+}
+
 .chat-header-menu {
   position: relative;
 }
@@ -1364,6 +1442,12 @@ video {
 .composer-send {
   width: 48px;
   height: 48px;
+}
+
+.composer-tool.recording {
+  background: rgba(255, 122, 85, 0.16);
+  color: var(--secondary);
+  border-color: rgba(255, 122, 85, 0.28);
 }
 
 .recording-indicator {
@@ -2200,6 +2284,19 @@ video {
   }
 }
 
+@keyframes callPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1.45);
+    opacity: 1;
+  }
+}
+
 @keyframes messageIn {
   from {
     opacity: 0;
@@ -2372,6 +2469,18 @@ video {
     width: 100%;
     justify-content: flex-end;
     flex-wrap: wrap;
+  }
+
+  .chat-call-actions {
+    padding: 4px;
+  }
+
+  .chat-call-button {
+    padding: 0 10px;
+  }
+
+  .chat-call-status {
+    display: none;
   }
 
   .message-stack {
