@@ -533,7 +533,9 @@ function Chat() {
     };
 
     peer.ontrack = (event) => {
-      event.streams[0].getTracks().forEach((track) => {
+      const incomingTracks = event.streams?.[0]?.getTracks?.() || [event.track].filter(Boolean);
+
+      incomingTracks.forEach((track) => {
         const exists = remoteStream.getTracks().some((existingTrack) => existingTrack.id === track.id);
         if (!exists) {
           remoteStream.addTrack(track);
